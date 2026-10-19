@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopBar, { type View } from "@/components/TopBar";
 import MonthCalendar from "@/components/MonthCalendar";
 import ListView from "@/components/ListView";
@@ -54,7 +54,7 @@ export default function CalendarApp({ email }: { email: string }) {
   const [editing, setEditing] = useState<Deadline | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { jumpToNearest?: boolean }) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     try {
@@ -62,9 +62,14 @@ export default function CalendarApp({ email }: { email: string }) {
       if (res.ok) {
         const list = (await res.json()) as Deadline[];
         setDeadlines(list);
-        // First load / right after capture: never sit on an empty month when
-        // the user's deadlines live elsewhere.
-        setCursor((c) => chooseCursor(list, c, todayStart));
+        if (opts?.jumpToNearest) {
+          // After a capture: never sit on an empty month when the fresh
+          // deadlines live elsewhere.
+          setCursor((c) => chooseCursor(list, c, todayStart));
+        }
+        // Login/first load: no jump — always land on today's month (the
+        // cursor initialises to today; the header hint surfaces deadlines
+        // that live in other months).
       }
     } finally {
       setNow(Date.now());
@@ -116,6 +121,38 @@ export default function CalendarApp({ email }: { email: string }) {
     year: "numeric",
   });
 
+  // Quiet pointer: when the viewed month (today's month on login) has no
+  // deadlines but upcoming ones exist elsewhere, show where the next one is.
+  const hint = useMemo(() => {
+    if (loading || view !== "calendar" || now === 0) return null;
+    const monthKey = ymdLocal(cursor).slice(0, 7);
+    const inMonth = deadlines.some(
+      (d) => d.due_at && dayKeyOf(d.due_at).slice(0, 7) === monthKey,
+    );
+    if (inMonth) return null;
+    const upcoming = deadlines
+      .filter(
+        (d) =>
+          d.due_at && !d.done && new Date(d.due_at).getTime() >= now,
+      )
+      .sort(
+        (a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime(),
+      )[0];
+    if (!upcoming?.due_at) return null;
+    const dueDate = new Date(upcoming.due_at);
+    if (ymdLocal(dueDate).slice(0, 7) === monthKey) return null;
+    return {
+      deadline: upcoming,
+      label: `${upcoming.title} · ${dueDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`,
+    };
+  }, [loading, view, cursor, deadlines, now]);
+
+  function jumpToMonth(d: Deadline) {
+    if (!d.due_at) return;
+    const due = new Date(d.due_at);
+    setCursor(new Date(due.getFullYear(), due.getMonth(), 1));
+  }
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <TopBar view={view} onView={setView} onAdd={() => setCaptureOpen(true)} email={email} />
@@ -150,6 +187,16 @@ export default function CalendarApp({ email }: { email: string }) {
               >
                 Today
               </button>
+              {hint && (
+                <button
+                  type="button"
+                  onClick={() => jumpToMonth(hint.deadline)}
+                  title="Jump to the next upcoming deadline"
+                  className="ml-auto max-w-[55%] truncate text-xs text-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+                >
+                  Next: {hint.label} ›
+                </button>
+              )}
             </div>
 
             {loading ? (
@@ -191,7 +238,7 @@ export default function CalendarApp({ email }: { email: string }) {
           onClose={() => setCaptureOpen(false)}
           onDone={(msg) => {
             setCaptureOpen(false);
-            load();
+            load({ jumpToNearest: true });
             showToast(msg);
           }}
         />
