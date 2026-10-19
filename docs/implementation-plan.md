@@ -49,6 +49,23 @@ date (conf 0.97 → would auto-commit); added `RELATIVE_UNIT_RE` guard so
 unit-relative phrases route to review, per the spec's low-confidence example.
 **Do not tune `AUTO_COMMIT_THRESHOLD` until real pastes replace the synthetics.**
 
+### First REAL paste (2026-10-12): `real-moodle-gd-di-2026.txt`
+
+Moodle deadline export, 15 entries. Parser upgraded to match: entry
+segmentation (module line → title → status noise → due line), unicode
+superscript normalization (`6ᵗʰ`→`6th`, `1ˢᵗ`→`1st`, `22ⁿᵈ`→`22nd`), and
+merged date/time resolution (chrono splits `12 noon Fri 6th November 2026`
+into `noon Fri` + `6th November 2026`; we take the date from the most certain
+match and the time from the hour-certain match).
+
+| Result | Count | Detail |
+|---|---|---|
+| Auto-committed @ 0.99 | **12/12 datable entries** | all exact dates, all `12:00` local, full module names, clean titles (`Photo Essay`, CATS/formative stripped) |
+| Sent to review @ 0.45 | 3 | DI303 ×2 + GD328 — **source data has no dates** (correct routing) |
+| Synthetic regression | identical | all 12 synthetic confidences unchanged |
+
+**Q5 LLM trigger: NOT fired** (datable auto-commit 100% ≫ 60% floor).
+
 ## 2. Phase details
 
 ### Phase 3 — Scaffold
