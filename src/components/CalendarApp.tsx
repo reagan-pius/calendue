@@ -1,0 +1,195 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import TopBar, { type View } from "@/components/TopBar";
+import MonthCalendar from "@/components/MonthCalendar";
+import ListView from "@/components/ListView";
+import CaptureModal from "@/components/CaptureModal";
+import EditModal from "@/components/EditModal";
+import type { Deadline } from "@/lib/deadlines/types";
+import { monthRange } from "@/lib/dates";
+
+// Home surface: Calendar/List toggle, month nav, capture modal, day popover,
+// toast after hybrid commit. Data is fetched client-side in browser-local tz
+// (spec D4).
+export default function CalendarApp({ email }: { email: string }) {
+  const [view, setView] = useState<View>("calendar");
+  const [cursor, setCursor] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [loading, setLoading] = useState(true);
+  // Wall clock sampled in async load (not during render — purity rules).
+  const [now, setNow] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [editing, setEditing] = useState<Deadline | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const load = useCallback(async () => {
+    const { from, to } = monthRange(cursor);
+    try {
+      const res = await fetch(
+        `/api/deadlines?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+      );
+      if (res.ok) setDeadlines((await res.json()) as Deadline[]);
+    } finally {
+      setNow(Date.now());
+      setLoading(false);
+    }
+  }, [cursor]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  async function patchDeadline(id: string, patch: Record<string, unknown>) {
+    const res = await fetch(`/api/deadlines/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) return null;
+    const updated = (await res.json()) as Deadline;
+    setDeadlines((ds) => ds.map((d) => (d.id === id ? updated : d)));
+    return updated;
+  }
+
+  async function removeDeadline(id: string) {
+    const res = await fetch(`/api/deadlines/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setDeadlines((ds) => ds.filter((d) => d.id !== id));
+      showToast("Deleted");
+    }
+  }
+
+  function stepMonth(delta: number) {
+    setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
+  }
+
+  function goToday() {
+    const n = new Date();
+    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
+  }
+
+  const monthLabel = cursor.toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+
+  return (
+    <div className="min-h-screen bg-canvas text-ink">
+      <TopBar view={view} onView={setView} onAdd={() => setCaptureOpen(true)} email={email} />
+
+      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+        {view === "calendar" ? (
+          <>
+            <div className="mb-4 flex items-center gap-2">
+              <h2 className="text-[15px] font-medium">{monthLabel}</h2>
+              <div className="ml-2 flex items-center">
+                <button
+                  type="button"
+                  aria-label="Previous month"
+                  onClick={() => stepMonth(-1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-black/5 hover:text-ink"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  aria-label="Next month"
+                  onClick={() => stepMonth(1)}
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-black/5 hover:text-ink"
+                >
+                  ›
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={goToday}
+                className="ml-2 text-xs text-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+              >
+                Today
+              </button>
+            </div>
+
+            {loading ? (
+              <p className="py-16 text-center text-sm text-muted">Loading…</p>
+            ) : deadlines.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-24">
+                <p className="text-sm text-muted">No deadlines yet.</p>
+                <button
+                  type="button"
+                  onClick={() => setCaptureOpen(true)}
+                  className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                >
+                  Add deadlines
+                </button>
+              </div>
+            ) : (
+              <MonthCalendar
+                cursor={cursor}
+                deadlines={deadlines}
+                onEdit={setEditing}
+                onDelete={removeDeadline}
+                onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
+              />
+            )}
+          </>
+        ) : (
+          <ListView
+            deadlines={deadlines}
+            loading={loading}
+            now={now}
+            onEdit={setEditing}
+            onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
+          />
+        )}
+      </main>
+
+      {captureOpen && (
+        <CaptureModal
+          onClose={() => setCaptureOpen(false)}
+          onDone={(msg) => {
+            setCaptureOpen(false);
+            load();
+            showToast(msg);
+          }}
+        />
+      )}
+
+      {editing && (
+        <EditModal
+          deadline={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(updated) => {
+            setDeadlines((ds) => ds.map((d) => (d.id === updated.id ? updated : d)));
+            setEditing(null);
+            showToast("Saved");
+          }}
+          onDeleted={(id) => {
+            setDeadlines((ds) => ds.filter((d) => d.id !== id));
+            setEditing(null);
+            showToast("Deleted");
+          }}
+        />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-hairline bg-canvas px-4 py-2 text-sm shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
