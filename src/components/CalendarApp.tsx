@@ -7,11 +7,38 @@ import ListView from "@/components/ListView";
 import CaptureModal from "@/components/CaptureModal";
 import EditModal from "@/components/EditModal";
 import type { Deadline } from "@/lib/deadlines/types";
-import { monthRange } from "@/lib/dates";
+import { dayKeyOf, ymdLocal } from "@/lib/dates";
+
+// Pick the month to view after a data load: keep the current month when it
+// holds deadlines; otherwise jump to the month of the nearest upcoming
+// deadline (pure — clock is passed in).
+function chooseCursor(
+  list: Deadline[],
+  current: Date,
+  todayStart: Date,
+): Date {
+  const monthKey = ymdLocal(current).slice(0, 7);
+  const inView = list.some(
+    (d) => d.due_at && dayKeyOf(d.due_at).slice(0, 7) === monthKey,
+  );
+  if (inView) return current;
+  const upcoming = list
+    .filter(
+      (d) =>
+        d.due_at && new Date(d.due_at).getTime() >= todayStart.getTime(),
+    )
+    .sort(
+      (a, b) => new Date(a.due_at!).getTime() - new Date(b.due_at!).getTime(),
+    )[0];
+  if (!upcoming?.due_at) return current;
+  const due = new Date(upcoming.due_at);
+  return new Date(due.getFullYear(), due.getMonth(), 1);
+}
 
 // Home surface: Calendar/List toggle, month nav, capture modal, day popover,
 // toast after hybrid commit. Data is fetched client-side in browser-local tz
-// (spec D4).
+// (spec D4). One fetch returns ALL deadlines: List shows every entry; the
+// month grid filters by the viewed month.
 export default function CalendarApp({ email }: { email: string }) {
   const [view, setView] = useState<View>("calendar");
   const [cursor, setCursor] = useState(() => {
@@ -28,17 +55,22 @@ export default function CalendarApp({ email }: { email: string }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
-    const { from, to } = monthRange(cursor);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     try {
-      const res = await fetch(
-        `/api/deadlines?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
-      );
-      if (res.ok) setDeadlines((await res.json()) as Deadline[]);
+      const res = await fetch(`/api/deadlines`);
+      if (res.ok) {
+        const list = (await res.json()) as Deadline[];
+        setDeadlines(list);
+        // First load / right after capture: never sit on an empty month when
+        // the user's deadlines live elsewhere.
+        setCursor((c) => chooseCursor(list, c, todayStart));
+      }
     } finally {
       setNow(Date.now());
       setLoading(false);
     }
-  }, [cursor]);
+  }, []);
 
   useEffect(() => {
     load();

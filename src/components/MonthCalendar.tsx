@@ -83,13 +83,13 @@ export default function MonthCalendar({
               key={c.key}
               className={`relative min-h-[92px] border-b border-r border-hairline p-1.5 ${
                 c.inMonth ? "" : "opacity-40"
-              } ${popoverDay === c.key ? "z-30" : ""}`}
+              } ${isToday ? "bg-accent/10" : ""} ${popoverDay === c.key ? "z-30" : ""}`}
             >
               <button
                 type="button"
                 onClick={() => setPopoverDay(popoverDay === c.key ? null : c.key)}
                 className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
-                  isToday ? "bg-accent font-medium text-white" : "text-muted"
+                  isToday ? "font-medium text-accent" : "text-muted"
                 }`}
               >
                 {c.day}
