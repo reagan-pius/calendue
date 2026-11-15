@@ -135,6 +135,7 @@ export default function MonthCalendar({
                       key={d.id}
                       type="button"
                       aria-label={d.title}
+                      title={d.title}
                       onClick={() => setPopoverDay(c.key)}
                       className={`flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
                         d.done
