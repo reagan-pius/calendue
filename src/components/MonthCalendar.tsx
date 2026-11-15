@@ -242,23 +242,7 @@ export default function MonthCalendar({
                   </div>
 
                   {popoverItems.length === 0 ? (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-xs text-muted">Nothing due</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPopoverDay(null);
-                          setConfirmDeleteId(null);
-                          onAdd(c.key);
-                        }}
-                        onPointerEnter={() => {
-                          void import("@/components/EditModal");
-                        }}
-                        className="self-start text-xs font-medium text-accent underline-offset-2 hover:underline"
-                      >
-                        Add
-                      </button>
-                    </div>
+                    <p className="text-xs text-muted">Nothing due</p>
                   ) : (
                     <ul className="flex flex-col divide-y divide-hairline">
                       {popoverItems.map((d) => (
@@ -316,6 +300,20 @@ export default function MonthCalendar({
                       ))}
                     </ul>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPopoverDay(null);
+                      setConfirmDeleteId(null);
+                      onAdd(c.key);
+                    }}
+                    onPointerEnter={() => {
+                      void import("@/components/EditModal");
+                    }}
+                    className="mt-2 text-xs font-medium text-accent underline-offset-2 hover:underline"
+                  >
+                    {popoverItems.length === 0 ? "Add" : "Add another"}
+                  </button>
                 </div>
               )}
             </div>
