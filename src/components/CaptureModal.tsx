@@ -189,7 +189,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="panel-enter relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[12px] border border-hairline bg-canvas p-5 shadow-lg"
+        className="panel-enter relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[12px] border border-hairline bg-canvas p-5"
       >
         <h3 id={titleId} className="mb-1 text-base font-medium tracking-tight">
           {step === "input" ? "Add deadlines" : "Review uncertain items"}
@@ -243,25 +243,25 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         ) : (
           <>
             {pendingAuto > 0 && (
-              <p className="mb-3 rounded-[6px] border border-hairline bg-canvas px-3 py-2 text-xs text-ink">
+              <p className="mb-3 text-xs text-muted">
                 {pendingAuto} already added to your calendar. Fix or drop the rest below.
               </p>
             )}
             <p className="mb-3 text-xs text-muted">
               Check the details below, then confirm. Drop anything wrong.
             </p>
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col divide-y divide-hairline">
               {rows.map((r, idx) => (
                 <li
                   key={idx}
-                  className={`rounded-[8px] border border-hairline p-3 ${r.dropped ? "opacity-40" : ""}`}
+                  className={`py-3 ${r.dropped ? "opacity-40" : ""}`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <span className="truncate text-[11px] text-muted">“{r.raw}”</span>
                     <button
                       type="button"
                       onClick={() => updateRow(idx, { dropped: !r.dropped })}
-                      className="shrink-0 text-[11px] text-muted underline-offset-2 hover:text-[#DC2626] hover:underline"
+                      className="shrink-0 text-[11px] text-muted underline-offset-2 hover:text-danger hover:underline"
                     >
                       {r.dropped ? "Restore" : "Drop"}
                     </button>
@@ -319,7 +319,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
                       />
                     </label>
                     {!r.date && !r.dropped && (
-                      <span className="self-end pb-1.5 text-[11px] font-medium text-[#DC2626]">Needs date</span>
+                      <span className="self-end pb-1.5 text-[11px] font-medium text-danger">Needs date</span>
                     )}
                   </div>
                 </li>
@@ -327,7 +327,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
             </ul>
 
             {needsDate && (
-              <p className="mt-2 text-[11px] text-[#DC2626]" role="alert">
+              <p className="mt-2 text-[11px] text-danger" role="alert">
                 Every kept row needs a date.
               </p>
             )}
@@ -353,7 +353,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         )}
 
         {error && (
-          <p className="mt-3 text-xs text-[#DC2626]" role="alert" aria-live="polite">
+          <p className="mt-3 text-xs text-danger" role="alert" aria-live="polite">
             {error}
           </p>
         )}

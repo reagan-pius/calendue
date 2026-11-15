@@ -44,7 +44,7 @@ function DeadlineChip({
       className={`relative flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${tone}`}
     >
       <span
-        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !deadline.done ? "ring-1 ring-[#DC2626]/70" : ""}`}
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !deadline.done ? "ring-1 ring-danger/70" : ""}`}
         style={{ backgroundColor: deadline.color ?? "#6B7280" }}
       />
       <span
@@ -207,7 +207,7 @@ export default function MonthCalendar({
               </div>
 
               {popoverDay === c.key && (
-                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3 shadow-lg">
+                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium">
                       {c.date.toLocaleDateString("en-GB", {
@@ -279,7 +279,7 @@ export default function MonthCalendar({
                                   setConfirmDeleteId(d.id);
                                 }
                               }}
-                              className="text-[11px] text-muted underline-offset-2 hover:text-[#DC2626] hover:underline"
+                              className="text-[11px] text-muted underline-offset-2 hover:text-danger hover:underline"
                             >
                               {confirmDeleteId === d.id ? "Confirm" : "Delete"}
                             </button>

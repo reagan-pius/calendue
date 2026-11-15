@@ -70,9 +70,12 @@ export default function ListView({
         <section key={section.key} aria-labelledby={`list-${section.key}`}>
           <h3
             id={`list-${section.key}`}
-            className="mb-2 border-b border-hairline pb-1 text-[11px] font-medium uppercase tracking-wide text-muted"
+            tabIndex={section.key === "overdue" ? -1 : undefined}
+            className={`mb-2 border-b border-hairline pb-1 text-[11px] font-medium outline-none ${
+              section.key === "overdue" ? "text-danger" : "text-muted"
+            }`}
           >
-            {section.label}
+            {section.label} · {section.items.length}
           </h3>
           <ul className="divide-y divide-hairline">
             {section.items.map((d) => {
@@ -89,7 +92,7 @@ export default function ListView({
                     aria-label={`Mark ${d.title} done`}
                   />
                   <span
-                    className="h-2 w-2 shrink-0 rounded-full"
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdueRow ? "ring-1 ring-danger/70" : ""}`}
                     style={{ backgroundColor: d.color ?? "#6B7280" }}
                   />
                   <button
@@ -98,7 +101,7 @@ export default function ListView({
                     onPointerEnter={() => {
                       void import("@/components/EditModal");
                     }}
-                    className={`min-w-0 flex-1 truncate text-left text-[14px] underline-offset-2 hover:underline ${
+                    className={`min-w-0 flex-1 truncate text-left text-sm underline-offset-2 hover:underline ${
                       d.done ? "line-through text-muted" : ""
                     }`}
                   >
@@ -113,7 +116,7 @@ export default function ListView({
                     {d.due_at ? fmtDue(d.due_at) : "No date"}
                   </span>
                   {overdueRow && (
-                    <span className="shrink-0 text-[11px] font-medium text-[#DC2626]">
+                    <span className="shrink-0 text-[11px] font-medium text-danger">
                       Overdue
                     </span>
                   )}

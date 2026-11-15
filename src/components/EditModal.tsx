@@ -122,7 +122,7 @@ export default function EditModal({ deadline, onClose, onSaved, onDeleted }: Edi
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="panel-enter relative w-full max-w-md overflow-y-auto overscroll-contain rounded-[12px] border border-hairline bg-canvas p-5 shadow-lg"
+        className="panel-enter relative w-full max-w-md overflow-y-auto overscroll-contain rounded-[12px] border border-hairline bg-canvas p-5"
       >
         <h3 id={titleId} className="mb-4 text-base font-medium tracking-tight">
           {creating ? "Add deadline" : "Edit deadline"}
@@ -229,7 +229,7 @@ export default function EditModal({ deadline, onClose, onSaved, onDeleted }: Edi
         </div>
 
         {error && (
-          <p className="mt-3 text-xs text-[#DC2626]" role="alert" aria-live="polite">
+          <p className="mt-3 text-xs text-danger" role="alert" aria-live="polite">
             {error}
           </p>
         )}
@@ -240,7 +240,7 @@ export default function EditModal({ deadline, onClose, onSaved, onDeleted }: Edi
               type="button"
               onClick={remove}
               disabled={busy}
-              className="text-xs text-muted underline-offset-2 hover:text-[#DC2626] hover:underline disabled:opacity-50"
+              className="text-xs text-muted underline-offset-2 hover:text-danger hover:underline disabled:opacity-50"
             >
               {confirmDelete ? "Confirm delete" : "Delete"}
             </button>

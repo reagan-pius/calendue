@@ -92,7 +92,7 @@ export default function TopBar({ view, onView, onAdd, email }: TopBarProps) {
               />
               <div
                 role="menu"
-                className="panel-enter absolute right-0 top-9 z-20 w-56 rounded-[8px] border border-hairline bg-canvas p-3 text-sm shadow-lg"
+                className="panel-enter absolute right-0 top-9 z-20 w-56 rounded-[8px] border border-hairline bg-canvas p-3 text-sm"
               >
                 <p className="mb-2 truncate text-xs text-muted">{email}</p>
                 <button

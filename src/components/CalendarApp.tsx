@@ -56,6 +56,7 @@ export default function CalendarApp({
   const [editing, setEditing] = useState<Deadline | null>(null);
   const [creating, setCreating] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusOverdueRef = useRef(false);
 
   // Client-only clock: Cache Components must not prerender against Date.now().
   // Sync setState in useLayoutEffect so the first paint already has a local month.
@@ -66,6 +67,14 @@ export default function CalendarApp({
     setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
+
+  useEffect(() => {
+    if (view !== "list" || !focusOverdueRef.current) return;
+    focusOverdueRef.current = false;
+    const el = document.getElementById("list-overdue");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    el?.focus({ preventScroll: true });
+  }, [view, loading, deadlines]);
 
   const load = useCallback(async (opts?: { jumpToNearest?: boolean }) => {
     const todayStart = new Date();
@@ -240,7 +249,7 @@ export default function CalendarApp({
                   disabled={!clockReady}
                   className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink disabled:opacity-40"
                 >
-                  ‹
+                  {"<"}
                 </button>
                 <button
                   type="button"
@@ -249,7 +258,7 @@ export default function CalendarApp({
                   disabled={!clockReady}
                   className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink disabled:opacity-40"
                 >
-                  ›
+                  {">"}
                 </button>
               </div>
               <button
@@ -263,10 +272,13 @@ export default function CalendarApp({
               {overdueCue > 0 && (
                 <button
                   type="button"
-                  onClick={() => setView("list")}
-                  className="ml-auto text-xs font-medium text-[#DC2626] underline-offset-2 hover:underline"
+                  onClick={() => {
+                    focusOverdueRef.current = true;
+                    setView("list");
+                  }}
+                  className="ml-auto text-xs font-medium text-danger underline-offset-2 hover:underline"
                 >
-                  {overdueCue} overdue — view List ›
+                  {overdueCue} overdue — List
                 </button>
               )}
               {!overdueCue && hint && (
@@ -276,7 +288,7 @@ export default function CalendarApp({
                   title="Jump to the next upcoming deadline"
                   className="ml-auto max-w-[55%] truncate text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
                 >
-                  Next: {hint.label} ›
+                  Next: {hint.label}
                 </button>
               )}
             </div>
@@ -397,7 +409,7 @@ export default function CalendarApp({
         <div
           role="status"
           aria-live="polite"
-          className="toast-enter fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-hairline bg-canvas px-4 py-2 text-sm shadow-lg"
+          className="toast-enter fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-hairline bg-canvas px-4 py-2 text-sm"
         >
           {toast}
         </div>

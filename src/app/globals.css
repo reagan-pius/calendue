@@ -6,6 +6,7 @@
   --muted: oklch(42% 0.01 260);
   --hairline: oklch(86% 0.005 260);
   --accent: oklch(50% 0.16 250);
+  --danger: #dc2626;
   --motion: 140ms;
 }
 
@@ -15,6 +16,7 @@
   --color-muted: var(--muted);
   --color-hairline: var(--hairline);
   --color-accent: var(--accent);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
 }
 

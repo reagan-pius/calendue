@@ -41,7 +41,7 @@ export default function LoginPage() {
           },
         });
         if (otpError) throw otpError;
-        setMessage("Check your email for a magic link.");
+        setMessage("Check your email for a sign-in link.");
         return;
       }
 
@@ -80,7 +80,7 @@ export default function LoginPage() {
   const cta = busy
     ? "Working…"
     : magic
-      ? "Send magic link"
+      ? "Send sign-in link"
       : mode === "signup"
         ? "Create account"
         : "Sign in";
@@ -95,7 +95,7 @@ export default function LoginPage() {
           Calendue
         </h1>
         <p className="mt-2 mb-8 text-center text-sm text-muted">
-          Paste deadlines. Get a clean calendar.
+          Paste deadlines. See them on a calendar.
         </p>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
@@ -145,7 +145,7 @@ export default function LoginPage() {
         </form>
 
         {error && (
-          <p className="mt-3 text-xs text-[#DC2626]" role="alert" aria-live="polite">
+          <p className="mt-3 text-xs text-danger" role="alert" aria-live="polite">
             {error}
           </p>
         )}
@@ -161,7 +161,7 @@ export default function LoginPage() {
             onClick={() => setMagic(!magic)}
             className="underline-offset-2 hover:text-ink hover:underline"
           >
-            {magic ? "Use password" : "Email me a magic link"}
+            {magic ? "Use password" : "Email me a sign-in link"}
           </button>
           {!magic && (
             <button
