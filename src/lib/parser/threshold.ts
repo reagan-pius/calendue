@@ -1,3 +1,3 @@
-// Spec decision D2: starting auto-commit threshold, recalibrated in Phase 6
-// against 5-10 real deadline pastes before any parser hardening.
+// Spec decision D2: starting auto-commit threshold (0.85). Recalibrate against
+// 5-10 real deadline pastes before further parser hardening.
 export const AUTO_COMMIT_THRESHOLD = 0.85;

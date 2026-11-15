@@ -75,12 +75,18 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         throw new Error(body?.error ?? "Parse failed");
       }
       const data = (await res.json()) as {
-        autoCommit: unknown[];
-        needsReview: { raw: string; title: string; due_at: string | null; type: string; module: string | null }[];
+        autoCommitCount: number;
+        needsReview: {
+          raw: string;
+          title: string;
+          due_at: string | null;
+          type: string;
+          module: string | null;
+        }[];
         parseSessionId: string | null;
       };
       if (data.needsReview.length === 0) {
-        onDone(toastParts(data.autoCommit.length, 0, false));
+        onDone(toastParts(data.autoCommitCount, 0, false));
         return;
       }
       setRows(
@@ -98,7 +104,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         }),
       );
       setStep("review");
-      setPendingAuto(data.autoCommit.length);
+      setPendingAuto(data.autoCommitCount);
       setSessionId(data.parseSessionId ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parse failed");

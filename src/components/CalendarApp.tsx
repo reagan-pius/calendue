@@ -211,12 +211,17 @@ export default function CalendarApp({
     setCreating(false);
   }
 
+  function openCapture() {
+    closeEditModal();
+    setCaptureOpen(true);
+  }
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <TopBar
         view={view}
         onView={setView}
-        onAdd={() => setCaptureOpen(true)}
+        onAdd={openCapture}
         email={email}
       />
 
@@ -299,7 +304,7 @@ export default function CalendarApp({
                 </p>
                 <button
                   type="button"
-                  onClick={() => setCaptureOpen(true)}
+                  onClick={openCapture}
                   onPointerEnter={() => {
                     void import("@/components/CaptureModal");
                   }}
@@ -340,7 +345,7 @@ export default function CalendarApp({
             now={now}
             onEdit={openEdit}
             onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
-            onAdd={() => setCaptureOpen(true)}
+            onAdd={openCapture}
           />
         )}
       </main>

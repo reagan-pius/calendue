@@ -1,7 +1,7 @@
 // Spec decision D1: rules-first parser — chrono-node for date extraction plus
 // keyword rules for type/module/title. Deterministic and key-free for v1.
 // An LLM may later replace/augment this module behind the same
-// POST /api/parse contract ({ text, tz } -> { autoCommit[], needsReview[] }).
+// POST /api/parse contract ({ text, tz } -> { autoCommitCount, needsReview[] }).
 //
 // Structured pastes (e.g. Moodle deadline exports) are segmented into entries:
 // module line -> assignment title -> status noise -> due line. Single-line
@@ -10,7 +10,7 @@ import { TYPE_COLORS, type DeadlineType } from "../deadlines/types";
 import { normalizeText } from "./normalize";
 import { isDateLine, resolveDate, type ResolvedDate } from "./dates";
 
-export interface ParsedItem {
+interface ParsedItem {
   raw: string;
   title: string;
   /** ISO UTC instant, or null when no date could be resolved. */

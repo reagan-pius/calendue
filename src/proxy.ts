@@ -52,7 +52,7 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Skip static assets + API (API routes auth themselves). Cuts middleware
+  // Skip static assets + API (API routes auth themselves). Cuts proxy
   // work on parse/CRUD traffic without losing cookie refresh on page loads.
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",

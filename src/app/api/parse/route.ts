@@ -4,7 +4,7 @@ import { parseDeadlines } from "@/lib/parser";
 import { AUTO_COMMIT_THRESHOLD } from "@/lib/parser/threshold";
 import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
-// POST /api/parse — { text, tz } -> { autoCommit[], needsReview[] }.
+// POST /api/parse — { text, tz } -> { autoCommitCount, needsReview[] }.
 // Trust rules (spec): auto-commit only at confidence >= threshold; uncertain
 // items are NEVER persisted without explicit confirm; a parse_sessions row is
 // recorded for debugging. tz is the browser IANA zone (spec D4).
@@ -106,8 +106,14 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({
-    autoCommit: saved,
-    needsReview: review,
+    autoCommitCount: saved.length,
+    needsReview: review.map(({ raw, title, due_at, type, module }) => ({
+      raw,
+      title,
+      due_at,
+      type,
+      module,
+    })),
     parseSessionId: parseSession?.id ?? null,
   });
 }

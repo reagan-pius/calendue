@@ -9,44 +9,54 @@ const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 function DeadlineChip({
   deadline,
   overdue,
+  inMonth,
   onOpen,
 }: {
   deadline: Deadline;
   overdue: boolean;
+  inMonth: boolean;
   onOpen: () => void;
 }) {
   const labelRef = useRef<HTMLSpanElement>(null);
   const [tip, setTip] = useState(false);
 
+  const tone = deadline.done
+    ? "text-muted"
+    : !inMonth
+      ? "text-muted"
+      : overdue
+        ? "font-medium text-ink"
+        : "text-ink";
+
   return (
     <button
       type="button"
       aria-label={deadline.title}
-      onClick={onOpen}
+      onClick={() => {
+        setTip(false);
+        onOpen();
+      }}
       onPointerEnter={() => {
         const el = labelRef.current;
         setTip(!!el && el.scrollWidth > el.clientWidth);
       }}
       onPointerLeave={() => setTip(false)}
-      className={`relative flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
-        deadline.done
-          ? "line-through text-muted"
-          : overdue
-            ? "font-medium text-ink"
-            : "text-ink"
-      }`}
+      className={`relative flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${tone}`}
     >
       <span
         className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !deadline.done ? "ring-1 ring-[#DC2626]/70" : ""}`}
         style={{ backgroundColor: deadline.color ?? "#6B7280" }}
       />
-      <span ref={labelRef} className="truncate">
+      <span
+        ref={labelRef}
+        className={`truncate ${deadline.done ? "line-through" : ""}`}
+      >
         {deadline.title}
       </span>
       {tip ? (
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-0 z-40 mb-1 max-w-[240px] rounded-[4px] border border-hairline bg-canvas px-2 py-1 text-[11px] leading-snug font-normal text-ink normal-case no-underline shadow-sm"
+          className="pointer-events-none absolute bottom-full left-0 z-40 max-w-[240px] rounded-[4px] border border-hairline bg-canvas px-2 py-1 text-[11px] leading-snug text-ink shadow-sm"
         >
           {deadline.title}
         </span>
@@ -184,6 +194,7 @@ export default function MonthCalendar({
                       key={d.id}
                       deadline={d}
                       overdue={overdue}
+                      inMonth={c.inMonth}
                       onOpen={() => setPopoverDay(c.key)}
                     />
                   );
