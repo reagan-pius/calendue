@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CalendarApp from "@/components/CalendarApp";
@@ -8,6 +9,10 @@ import type { Deadline } from "@/lib/deadlines/types";
 export const instant = false;
 
 export default async function Home() {
+  // Force request-time render so Cache Components does not prerender the
+  // client tree against an unstable clock (Date.now / local month cursor).
+  await connection();
+
   const supabase = await createClient();
   const {
     data: { user },
