@@ -13,13 +13,6 @@ export function dayKeyOf(iso: string): string {
   return ymdLocal(new Date(iso));
 }
 
-/** First/last instants of the month containing `cursor` (local). */
-export function monthRange(cursor: Date): { from: string; to: string } {
-  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-  const last = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-  return { from: first.toISOString(), to: last.toISOString() };
-}
-
 export function fmtDue(iso: string): string {
   return new Date(iso).toLocaleString("en-GB", {
     day: "numeric",

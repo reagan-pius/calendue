@@ -17,10 +17,12 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "auth") {
-      setError("Sign-in link expired or invalid. Try again.");
+    if (new URLSearchParams(window.location.search).get("error") !== "auth") {
+      return;
     }
+    queueMicrotask(() => {
+      setError("Sign-in link expired or invalid. Try again.");
+    });
   }, []);
 
   async function submit(e: React.FormEvent) {

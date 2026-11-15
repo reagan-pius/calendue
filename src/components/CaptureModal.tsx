@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useId, useState } from "react";
 import {
   DEADLINE_TYPES,
   TYPE_LABELS,
   isDeadlineType,
 } from "@/lib/deadlines/types";
-import { combineLocal, dayKeyOf, splitIso } from "@/lib/dates";
+import { combineLocal, splitIso } from "@/lib/dates";
 
 interface CaptureModalProps {
   onClose: () => void;
@@ -21,7 +21,6 @@ interface ReviewRow {
   time: string;
   type: string;
   module: string;
-  confidence: number;
   dropped: boolean;
 }
 
@@ -41,7 +40,6 @@ function toastParts(auto: number, confirmed: number, cancelledReview: boolean) {
 // always reports that honestly so the calendar can reload.
 export default function CaptureModal({ onClose, onDone, onManual }: CaptureModalProps) {
   const titleId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<"input" | "review">("input");
   const [text, setText] = useState("");
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -50,6 +48,8 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
   const [pendingAuto, setPendingAuto] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
+  const needsDate = rows.some((r) => !r.dropped && !r.date);
+
   function dismiss() {
     if (step === "review" && pendingAuto > 0) {
       onDone(toastParts(pendingAuto, 0, true));
@@ -57,32 +57,6 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
     }
     onClose();
   }
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        dismiss();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        if (step === "input" && text.trim() && !busy) void submitParse();
-        if (step === "review" && !needsDate && !busy) void confirmReview();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers close over latest state
-  });
 
   async function submitParse() {
     setBusy(true);
@@ -102,7 +76,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
       }
       const data = (await res.json()) as {
         autoCommit: unknown[];
-        needsReview: { raw: string; title: string; due_at: string | null; type: string; module: string | null; confidence: number }[];
+        needsReview: { raw: string; title: string; due_at: string | null; type: string; module: string | null }[];
         parseSessionId: string | null;
       };
       if (data.needsReview.length === 0) {
@@ -115,11 +89,10 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
           return {
             raw: i.raw,
             title: i.title,
-            date: i.due_at ? dayKeyOf(i.due_at) : parts.date,
-            time: i.due_at ? parts.time : "",
+            date: parts.date,
+            time: parts.time,
             type: isDeadlineType(i.type) ? i.type : "assignment",
             module: i.module ?? "",
-            confidence: i.confidence,
             dropped: false,
           };
         }),
@@ -172,7 +145,31 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
     setRows((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
 
-  const needsDate = rows.some((r) => !r.dropped && !r.date);
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      dismiss();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (step === "input" && text.trim() && !busy) void submitParse();
+      if (step === "review" && !needsDate && !busy) void confirmReview();
+    }
+  });
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -183,7 +180,6 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         onClick={dismiss}
       />
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

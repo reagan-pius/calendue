@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { TYPE_COLORS, isDeadlineType } from "@/lib/deadlines/types";
 import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
-// GET /api/deadlines?from=<iso>&to=<iso> — session-scoped via RLS.
-export async function GET(req: Request) {
+// GET /api/deadlines — session-scoped via RLS (full list for calendar + list).
+export async function GET() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,18 +13,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
-
-  let query = supabase
+  const { data, error } = await supabase
     .from("deadlines")
     .select(DEADLINE_COLUMNS)
     .order("due_at", { ascending: true, nullsFirst: false });
-  if (from) query = query.gte("due_at", from);
-  if (to) query = query.lte("due_at", to);
 
-  const { data, error } = await query;
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -83,10 +76,6 @@ export async function POST(req: Request) {
         typeof body.module === "string" && body.module ? body.module : null,
       color,
       source,
-      parse_confidence:
-        typeof body.parse_confidence === "number"
-          ? body.parse_confidence
-          : null,
       parse_session_id:
         typeof body.parse_session_id === "string" && body.parse_session_id
           ? body.parse_session_id

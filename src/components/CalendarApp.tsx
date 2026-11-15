@@ -6,7 +6,7 @@ import TopBar, { type View } from "@/components/TopBar";
 import MonthCalendar from "@/components/MonthCalendar";
 import ListView from "@/components/ListView";
 import type { Deadline } from "@/lib/deadlines/types";
-import { dayKeyOf, ymdLocal } from "@/lib/dates";
+import { dayKeyOf, isOverdue, ymdLocal } from "@/lib/dates";
 
 const CaptureModal = dynamic(() => import("@/components/CaptureModal"), {
   ssr: false,
@@ -57,10 +57,14 @@ export default function CalendarApp({
   const [creating, setCreating] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Client-only clock: Cache Components must not prerender against Date.now().
+  // Sync setState in useLayoutEffect so the first paint already has a local month.
   useLayoutEffect(() => {
     const n = new Date();
+    /* eslint-disable react-hooks/set-state-in-effect -- intentional post-mount clock seed */
     setNow(n.getTime());
     setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   const load = useCallback(async (opts?: { jumpToNearest?: boolean }) => {
@@ -179,10 +183,7 @@ export default function CalendarApp({
     );
     if (openInMonth) return 0;
     return deadlines.filter(
-      (d) =>
-        !d.done &&
-        d.due_at !== null &&
-        new Date(d.due_at).getTime() < now,
+      (d) => d.due_at !== null && isOverdue(d.due_at, d.done, now),
     ).length;
   }, [loading, view, cursor, deadlines, now]);
 
@@ -196,7 +197,18 @@ export default function CalendarApp({
 
   function openManual() {
     setCaptureOpen(false);
+    setEditing(null);
     setCreating(true);
+  }
+
+  function openEdit(d: Deadline) {
+    setCreating(false);
+    setEditing(d);
+  }
+
+  function closeEditModal() {
+    setEditing(null);
+    setCreating(false);
   }
 
   return (
@@ -301,7 +313,7 @@ export default function CalendarApp({
                 cursor={cursor}
                 now={now}
                 deadlines={deadlines}
-                onEdit={setEditing}
+                onEdit={openEdit}
                 onDelete={removeDeadline}
                 onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
               />
@@ -326,7 +338,7 @@ export default function CalendarApp({
             deadlines={deadlines}
             loading={loading}
             now={now}
-            onEdit={setEditing}
+            onEdit={openEdit}
             onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
             onAdd={() => setCaptureOpen(true)}
           />
@@ -348,22 +360,19 @@ export default function CalendarApp({
 
       {(editing || creating) && (
         <EditModal
-          deadline={editing}
-          onClose={() => {
-            setEditing(null);
-            setCreating(false);
-          }}
+          deadline={creating ? null : editing}
+          onClose={closeEditModal}
           onSaved={(updated) => {
             if (creating) {
               setDeadlines((ds) => [...ds, updated]);
-              setCreating(false);
+              closeEditModal();
               showToast("Added");
               load({ jumpToNearest: true });
             } else {
               setDeadlines((ds) =>
                 ds.map((d) => (d.id === updated.id ? updated : d)),
               );
-              setEditing(null);
+              closeEditModal();
               showToast("Saved");
             }
           }}
@@ -372,7 +381,7 @@ export default function CalendarApp({
               ? undefined
               : (id) => {
                   setDeadlines((ds) => ds.filter((d) => d.id !== id));
-                  setEditing(null);
+                  closeEditModal();
                   showToast("Deleted");
                 }
           }

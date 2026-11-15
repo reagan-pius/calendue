@@ -45,7 +45,8 @@ export default function ListView({
     return out;
   }, [deadlines, now]);
 
-  if (loading) {
+  // now===0 is the pre-mount SSR clock; classifying against it empties Overdue.
+  if (loading || now === 0) {
     return <p className="py-16 text-center text-sm text-muted">Loading…</p>;
   }
   if (deadlines.length === 0) {

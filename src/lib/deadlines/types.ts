@@ -39,11 +39,4 @@ export interface Deadline {
   module: string | null;
   color: string | null;
   done: boolean;
-  source: string;
-  // Optional server-only / calibration fields — omitted from lean list selects.
-  user_id?: string;
-  parse_confidence?: number | null;
-  parse_session_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
 }

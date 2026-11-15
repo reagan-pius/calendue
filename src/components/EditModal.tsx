@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useEffectEvent, useId, useState } from "react";
 import {
   DEADLINE_TYPES,
   TYPE_COLORS,
@@ -39,43 +39,19 @@ export default function EditModal({ deadline, onClose, onSaved, onDeleted }: Edi
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        if (!busy && title.trim()) void save();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
-
   async function save() {
     setBusy(true);
     setError(null);
     try {
-      const body = {
+      const body: Record<string, unknown> = {
         title,
         description: description || null,
         due_at: date ? combineLocal(date, time) : null,
         type,
         module: module || null,
         color,
-        source: creating ? "manual" : undefined,
       };
+      if (creating) body.source = "manual";
 
       const res = await fetch(
         creating ? "/api/deadlines" : `/api/deadlines/${deadline.id}`,
@@ -108,6 +84,31 @@ export default function EditModal({ deadline, onClose, onSaved, onDeleted }: Edi
     if (res.ok) onDeleted(deadline.id);
     else setBusy(false);
   }
+
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (!busy && title.trim()) void save();
+    }
+  });
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

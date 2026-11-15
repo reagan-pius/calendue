@@ -6,7 +6,7 @@
 // match with a certain hour.
 import * as chrono from "chrono-node";
 
-export const RELATIVE_UNIT_RE =
+const RELATIVE_UNIT_RE =
   /\b(next|last|this|coming)\s+(week|month|year)\b/i;
 
 // Moodle-style trailing age: " - 17 days", " - 1 month and 7 days"
@@ -57,7 +57,7 @@ function tzOffsetMs(tz: string, utcMillis: number): number {
 }
 
 /** Convert a wall-clock reading in `tz` to a UTC instant (2-pass for DST). */
-export function wallClockToUtc(
+function wallClockToUtc(
   tz: string,
   y: number,
   mo: number,

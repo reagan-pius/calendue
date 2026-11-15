@@ -109,6 +109,5 @@ export async function POST(req: Request) {
     autoCommit: saved,
     needsReview: review,
     parseSessionId: parseSession?.id ?? null,
-    threshold: AUTO_COMMIT_THRESHOLD,
   });
 }
