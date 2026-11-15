@@ -120,7 +120,9 @@ export default function ListView({
                     </span>
                   )}
                   {soonRow && (
-                    <span className="shrink-0 text-[11px] text-muted">Due soon</span>
+                    <span className="shrink-0 text-[11px] font-medium text-ink">
+                      Due soon
+                    </span>
                   )}
                 </li>
               );

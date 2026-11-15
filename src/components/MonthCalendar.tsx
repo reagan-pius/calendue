@@ -107,15 +107,19 @@ export default function MonthCalendar({
             <div
               key={c.key}
               className={`relative min-h-[104px] border-b border-r border-hairline p-1.5 ${
-                c.inMonth ? "" : "opacity-40"
-              } ${popoverDay === c.key ? "z-30" : ""}`}
+                popoverDay === c.key ? "z-30" : ""
+              }`}
             >
               <button
                 type="button"
                 aria-label={dayLabel}
                 onClick={() => setPopoverDay(popoverDay === c.key ? null : c.key)}
                 className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
-                  isToday ? "font-medium text-accent" : "text-muted"
+                  isToday
+                    ? "font-medium text-accent"
+                    : c.inMonth
+                      ? "text-ink"
+                      : "text-muted"
                 }`}
               >
                 {c.day}
@@ -134,14 +138,14 @@ export default function MonthCalendar({
                       onClick={() => setPopoverDay(c.key)}
                       className={`flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
                         d.done
-                          ? "line-through opacity-50"
+                          ? "line-through text-muted"
                           : overdue
-                            ? "font-medium"
-                            : ""
+                            ? "font-medium text-ink"
+                            : "text-ink"
                       }`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !d.done ? "ring-1 ring-[#DC2626]/40" : ""}`}
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !d.done ? "ring-1 ring-[#DC2626]/70" : ""}`}
                         style={{ backgroundColor: d.color ?? "#6B7280" }}
                       />
                       <span className="truncate">{d.title}</span>

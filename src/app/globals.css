@@ -2,10 +2,10 @@
 
 :root {
   --canvas: oklch(99% 0 0);
-  --ink: oklch(22% 0.01 260);
-  --muted: oklch(55% 0.01 260);
-  --hairline: oklch(92% 0.005 260);
-  --accent: oklch(55% 0.15 250);
+  --ink: oklch(20% 0.01 260);
+  --muted: oklch(42% 0.01 260);
+  --hairline: oklch(86% 0.005 260);
+  --accent: oklch(50% 0.16 250);
   --motion: 140ms;
 }
 
