@@ -197,7 +197,9 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
 
         {step === "input" ? (
           <>
-            <p className="mb-3 text-xs text-muted">Paste from Moodle or a chat.</p>
+            <p className="mb-3 text-xs text-muted">
+              Paste any deadlines — Moodle, chat, notes, or a plain list.
+            </p>
             <label className="sr-only" htmlFor="capture-paste">
               Deadline paste
             </label>

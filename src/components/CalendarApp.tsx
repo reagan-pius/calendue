@@ -312,7 +312,7 @@ export default function CalendarApp({
             ) : deadlines.length === 0 ? (
               <div className="flex flex-col items-center gap-4 py-32">
                 <p className="text-sm text-muted">
-                  No deadlines yet. Paste from Moodle or a chat.
+                  No deadlines yet. Paste a list to get started.
                 </p>
                 <button
                   type="button"
