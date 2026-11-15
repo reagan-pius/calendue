@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { Deadline } from "@/lib/deadlines/types";
-import { fmtDue, isOverdue } from "@/lib/dates";
+import { fmtDue, isDueSoon, isOverdue } from "@/lib/dates";
 
 interface ListViewProps {
   deadlines: Deadline[];
@@ -11,37 +11,60 @@ interface ListViewProps {
   now: number;
   onEdit: (d: Deadline) => void;
   onToggle: (d: Deadline) => void;
+  onAdd?: () => void;
 }
 
-// Spec: single-line rows — color dot · title · module · due date/time ·
-// overdue label; upcoming first, then overdue, done below with strikethrough.
-export default function ListView({ deadlines, loading, now, onEdit, onToggle }: ListViewProps) {
+// List: overdue first (hard once-due), then upcoming, done below with
+// strikethrough. Due-soon and overdue get list labels for scanability.
+export default function ListView({
+  deadlines,
+  loading,
+  now,
+  onEdit,
+  onToggle,
+  onAdd,
+}: ListViewProps) {
   const rows = useMemo(() => {
     const byDue = (a: Deadline, b: Deadline) =>
       (a.due_at ? new Date(a.due_at).getTime() : Infinity) -
       (b.due_at ? new Date(b.due_at).getTime() : Infinity);
     const active = deadlines.filter((d) => !d.done);
-    const upcoming = active
-      .filter((d) => !d.due_at || new Date(d.due_at).getTime() >= now)
-      .sort(byDue);
     const overdue = active
       .filter((d) => d.due_at !== null && new Date(d.due_at).getTime() < now)
       .sort(byDue);
+    const upcoming = active
+      .filter((d) => !d.due_at || new Date(d.due_at).getTime() >= now)
+      .sort(byDue);
     const done = deadlines.filter((d) => d.done).sort(byDue);
-    return [...upcoming, ...overdue, ...done];
+    return [...overdue, ...upcoming, ...done];
   }, [deadlines, now]);
 
   if (loading) {
     return <p className="py-16 text-center text-sm text-muted">Loading…</p>;
   }
   if (deadlines.length === 0) {
-    return <p className="py-16 text-center text-sm text-muted">No deadlines yet.</p>;
+    return (
+      <div className="flex flex-col items-center gap-3 py-24">
+        <p className="text-sm text-muted">No deadlines yet.</p>
+        {onAdd && (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Add deadlines
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (
     <ul className="divide-y divide-hairline border-y border-hairline">
       {rows.map((d) => {
         const overdueRow = d.due_at ? isOverdue(d.due_at, d.done, now) : false;
+        const soonRow =
+          !overdueRow && !d.done && d.due_at ? isDueSoon(d.due_at, now) : false;
         return (
           <li key={d.id} className="flex items-center gap-3 py-2.5 text-sm">
             <input
@@ -73,6 +96,11 @@ export default function ListView({ deadlines, loading, now, onEdit, onToggle }: 
             {overdueRow && (
               <span className="shrink-0 rounded-[4px] bg-[#DC2626]/10 px-1.5 py-0.5 text-[11px] font-medium text-[#DC2626]">
                 Overdue
+              </span>
+            )}
+            {soonRow && (
+              <span className="shrink-0 rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent">
+                Due soon
               </span>
             )}
           </li>

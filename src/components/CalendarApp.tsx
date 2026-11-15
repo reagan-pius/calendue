@@ -47,6 +47,7 @@ export default function CalendarApp({ email }: { email: string }) {
   });
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   // Wall clock sampled in async load (not during render — purity rules).
   const [now, setNow] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
@@ -59,18 +60,23 @@ export default function CalendarApp({ email }: { email: string }) {
     todayStart.setHours(0, 0, 0, 0);
     try {
       const res = await fetch(`/api/deadlines`);
-      if (res.ok) {
-        const list = (await res.json()) as Deadline[];
-        setDeadlines(list);
-        if (opts?.jumpToNearest) {
-          // After a capture: never sit on an empty month when the fresh
-          // deadlines live elsewhere.
-          setCursor((c) => chooseCursor(list, c, todayStart));
-        }
-        // Login/first load: no jump — always land on today's month (the
-        // cursor initialises to today; the header hint surfaces deadlines
-        // that live in other months).
+      if (!res.ok) {
+        setLoadError("Couldn’t load deadlines.");
+        return;
       }
+      const list = (await res.json()) as Deadline[];
+      setDeadlines(list);
+      setLoadError(null);
+      if (opts?.jumpToNearest) {
+        // After a capture: never sit on an empty month when the fresh
+        // deadlines live elsewhere.
+        setCursor((c) => chooseCursor(list, c, todayStart));
+      }
+      // Login/first load: no jump — always land on today's month (the
+      // cursor initialises to today; the header hint surfaces deadlines
+      // that live in other months).
+    } catch {
+      setLoadError("Couldn’t load deadlines.");
     } finally {
       setNow(Date.now());
       setLoading(false);
@@ -201,9 +207,23 @@ export default function CalendarApp({ email }: { email: string }) {
 
             {loading ? (
               <p className="py-16 text-center text-sm text-muted">Loading…</p>
+            ) : loadError ? (
+              <div className="flex flex-col items-center gap-3 py-24">
+                <p className="text-sm text-muted">{loadError}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoading(true);
+                    load();
+                  }}
+                  className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink"
+                >
+                  Try again
+                </button>
+              </div>
             ) : deadlines.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-24">
-                <p className="text-sm text-muted">No deadlines yet.</p>
+                <p className="text-sm text-muted">No deadlines yet. Paste from Moodle or a chat.</p>
                 <button
                   type="button"
                   onClick={() => setCaptureOpen(true)}
@@ -222,6 +242,20 @@ export default function CalendarApp({ email }: { email: string }) {
               />
             )}
           </>
+        ) : loadError && !loading ? (
+          <div className="flex flex-col items-center gap-3 py-24">
+            <p className="text-sm text-muted">{loadError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                load();
+              }}
+              className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink"
+            >
+              Try again
+            </button>
+          </div>
         ) : (
           <ListView
             deadlines={deadlines}
@@ -229,6 +263,7 @@ export default function CalendarApp({ email }: { email: string }) {
             now={now}
             onEdit={setEditing}
             onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
+            onAdd={() => setCaptureOpen(true)}
           />
         )}
       </main>
