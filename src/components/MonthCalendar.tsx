@@ -32,7 +32,8 @@ function DeadlineChip({
     <button
       type="button"
       aria-label={deadline.title}
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         setTip(false);
         onOpen();
       }}
@@ -166,9 +167,14 @@ export default function MonthCalendar({
             month: "long",
             year: "numeric",
           });
+          const toggleDay = () =>
+            setPopoverDay(popoverDay === c.key ? null : c.key);
+
           return (
             <div
               key={c.key}
+              role="presentation"
+              onClick={toggleDay}
               className={`relative min-h-[104px] border-b border-r border-hairline p-1.5 ${
                 isToday ? "bg-accent/5" : ""
               } ${popoverDay === c.key ? "z-30" : ""}`}
@@ -176,7 +182,10 @@ export default function MonthCalendar({
               <button
                 type="button"
                 aria-label={dayLabel}
-                onClick={() => setPopoverDay(popoverDay === c.key ? null : c.key)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleDay();
+                }}
                 className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
                   isToday
                     ? "font-medium text-accent"
@@ -211,7 +220,10 @@ export default function MonthCalendar({
               </div>
 
               {popoverDay === c.key && (
-                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3">
+                <div
+                  className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium">
                       {c.date.toLocaleDateString("en-GB", {
