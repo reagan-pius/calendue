@@ -34,11 +34,17 @@ yarn-error.log*
 .env*
 !.env.example
 
-# supabase local
+# supabase local CLI state (keep migrations + config.toml)
 /supabase/.temp/
+/supabase/.branches/
 
-# vercel
+# Real friend/Moodle pastes stay local — only synthetic samples ship
+/docs/calibration/samples/real-*.txt
+
+# local tooling / deploy
 .vercel
+.cursor/
+*.local
 
 # typescript
 *.tsbuildinfo
