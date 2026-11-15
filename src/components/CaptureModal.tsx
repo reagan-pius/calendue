@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   DEADLINE_TYPES,
   TYPE_LABELS,
@@ -11,6 +11,7 @@ import { combineLocal, dayKeyOf, splitIso } from "@/lib/dates";
 interface CaptureModalProps {
   onClose: () => void;
   onDone: (toast: string) => void;
+  onManual?: () => void;
 }
 
 interface ReviewRow {
@@ -25,7 +26,7 @@ interface ReviewRow {
 }
 
 const inputCls =
-  "w-full rounded-[6px] border border-hairline bg-white px-2.5 py-1.5 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent";
+  "w-full rounded-[6px] border border-hairline bg-white px-2.5 py-1.5 text-sm outline-none focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent";
 
 function toastParts(auto: number, confirmed: number, cancelledReview: boolean) {
   const parts: string[] = [];
@@ -38,7 +39,9 @@ function toastParts(auto: number, confirmed: number, cancelledReview: boolean) {
 // Spec capture modal: step 1 large textarea; step 2 editable review for
 // uncertain items. High-confidence items may already be committed; dismiss
 // always reports that honestly so the calendar can reload.
-export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
+export default function CaptureModal({ onClose, onDone, onManual }: CaptureModalProps) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<"input" | "review">("input");
   const [text, setText] = useState("");
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -54,6 +57,32 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
     }
     onClose();
   }
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        dismiss();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        e.preventDefault();
+        if (step === "input" && text.trim() && !busy) void submitParse();
+        if (step === "review" && !needsDate && !busy) void confirmReview();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers close over latest state
+  });
 
   async function submitParse() {
     setBusy(true);
@@ -147,34 +176,70 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button type="button" aria-label="Close" className="absolute inset-0 cursor-default bg-black/20" onClick={dismiss} />
-      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[12px] border border-hairline bg-canvas p-5 shadow-lg">
-        <h3 className="mb-3 text-sm font-medium">
+      <button
+        type="button"
+        aria-label="Close"
+        className="overlay-enter absolute inset-0 cursor-default bg-black/20"
+        onClick={dismiss}
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="panel-enter relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-[12px] border border-hairline bg-canvas p-5 shadow-lg"
+      >
+        <h3 id={titleId} className="mb-1 text-base font-medium tracking-tight">
           {step === "input" ? "Add deadlines" : "Review uncertain items"}
         </h3>
 
         {step === "input" ? (
           <>
+            <p className="mb-3 text-xs text-muted">Paste from Moodle or a chat.</p>
+            <label className="sr-only" htmlFor="capture-paste">
+              Deadline paste
+            </label>
             <textarea
+              id="capture-paste"
+              name="paste"
               autoFocus
-              rows={7}
-              placeholder={"Paste from Moodle or a chat, e.g.\nCS coursework 1 due 30 Oct\nMATH 201 exam Fri 2pm\nlab report due next friday"}
+              rows={8}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder={"CS coursework 1 due 30 Oct\nMATH 201 exam Fri 2pm\nlab report due next friday"}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className={`${inputCls} resize-y font-mono text-[13px]`}
+              className={`${inputCls} min-h-[180px] resize-y font-mono text-[13px]`}
             />
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button type="button" onClick={dismiss} className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={submitParse}
-                disabled={busy || !text.trim()}
-                className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {busy ? "Parsing…" : "Add"}
-              </button>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              {onManual ? (
+                <button
+                  type="button"
+                  onClick={onManual}
+                  className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+                >
+                  Or add one manually
+                </button>
+              ) : (
+                <span />
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={dismiss}
+                  className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted hover:text-ink"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitParse}
+                  disabled={busy || !text.trim()}
+                  className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  {busy ? "Parsing…" : "Add"}
+                </button>
+              </div>
             </div>
           </>
         ) : (
@@ -206,19 +271,41 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <label className="col-span-2 block">
                       <span className="mb-1 block text-[11px] text-muted">Title</span>
-                      <input className={inputCls} value={r.title} onChange={(e) => updateRow(idx, { title: e.target.value })} />
+                      <input
+                        name={`title-${idx}`}
+                        className={inputCls}
+                        value={r.title}
+                        onChange={(e) => updateRow(idx, { title: e.target.value })}
+                      />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] text-muted">Date</span>
-                      <input type="date" className={inputCls} value={r.date} onChange={(e) => updateRow(idx, { date: e.target.value })} />
+                      <input
+                        name={`date-${idx}`}
+                        type="date"
+                        className={inputCls}
+                        value={r.date}
+                        onChange={(e) => updateRow(idx, { date: e.target.value })}
+                      />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] text-muted">Time</span>
-                      <input type="time" className={inputCls} value={r.time} onChange={(e) => updateRow(idx, { time: e.target.value })} />
+                      <input
+                        name={`time-${idx}`}
+                        type="time"
+                        className={inputCls}
+                        value={r.time}
+                        onChange={(e) => updateRow(idx, { time: e.target.value })}
+                      />
                     </label>
                     <label className="block">
                       <span className="mb-1 block text-[11px] text-muted">Type</span>
-                      <select className={inputCls} value={r.type} onChange={(e) => updateRow(idx, { type: e.target.value })}>
+                      <select
+                        name={`type-${idx}`}
+                        className={inputCls}
+                        value={r.type}
+                        onChange={(e) => updateRow(idx, { type: e.target.value })}
+                      >
                         {DEADLINE_TYPES.map((t) => (
                           <option key={t} value={t}>{TYPE_LABELS[t]}</option>
                         ))}
@@ -226,7 +313,12 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
                     </label>
                     <label className="col-span-2 block sm:col-span-1">
                       <span className="mb-1 block text-[11px] text-muted">Module</span>
-                      <input className={inputCls} value={r.module} onChange={(e) => updateRow(idx, { module: e.target.value })} />
+                      <input
+                        name={`module-${idx}`}
+                        className={inputCls}
+                        value={r.module}
+                        onChange={(e) => updateRow(idx, { module: e.target.value })}
+                      />
                     </label>
                     {!r.date && !r.dropped && (
                       <span className="self-end pb-1.5 text-[11px] font-medium text-[#DC2626]">Needs date</span>
@@ -237,18 +329,24 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
             </ul>
 
             {needsDate && (
-              <p className="mt-2 text-[11px] text-[#DC2626]">Every kept row needs a date.</p>
+              <p className="mt-2 text-[11px] text-[#DC2626]" role="alert">
+                Every kept row needs a date.
+              </p>
             )}
 
             <div className="mt-4 flex items-center justify-end gap-2">
-              <button type="button" onClick={dismiss} className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink">
+              <button
+                type="button"
+                onClick={dismiss}
+                className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted hover:text-ink"
+              >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmReview}
                 disabled={busy || needsDate}
-                className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {busy ? "Saving…" : "Confirm"}
               </button>
@@ -256,7 +354,11 @@ export default function CaptureModal({ onClose, onDone }: CaptureModalProps) {
           </>
         )}
 
-        {error && <p className="mt-3 text-xs text-[#DC2626]">{error}</p>}
+        {error && (
+          <p className="mt-3 text-xs text-[#DC2626]" role="alert" aria-live="polite">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

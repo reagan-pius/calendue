@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Deadline } from "@/lib/deadlines/types";
-import { dayKeyOf, fmtTime, isDueSoon, isOverdue, ymdLocal } from "@/lib/dates";
+import { dayKeyOf, fmtTime, isOverdue, ymdLocal } from "@/lib/dates";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
@@ -27,6 +27,19 @@ export default function MonthCalendar({
   onToggle,
 }: MonthCalendarProps) {
   const [popoverDay, setPopoverDay] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!popoverDay) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setPopoverDay(null);
+        setConfirmDeleteId(null);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [popoverDay]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, Deadline[]>();
@@ -65,7 +78,10 @@ export default function MonthCalendar({
           type="button"
           aria-label="Close day details"
           className="fixed inset-0 z-20 cursor-default"
-          onClick={() => setPopoverDay(null)}
+          onClick={() => {
+            setPopoverDay(null);
+            setConfirmDeleteId(null);
+          }}
         />
       )}
 
@@ -81,62 +97,66 @@ export default function MonthCalendar({
         {cells.map((c) => {
           const items = byDay.get(c.key) ?? [];
           const isToday = c.key === todayKey;
+          const dayLabel = c.date.toLocaleDateString("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
           return (
             <div
               key={c.key}
-              className={`relative min-h-[92px] border-b border-r border-hairline p-1.5 ${
+              className={`relative min-h-[104px] border-b border-r border-hairline p-1.5 ${
                 c.inMonth ? "" : "opacity-40"
-              } ${isToday ? "bg-accent/10" : ""} ${popoverDay === c.key ? "z-30" : ""}`}
+              } ${popoverDay === c.key ? "z-30" : ""}`}
             >
               <button
                 type="button"
+                aria-label={dayLabel}
                 onClick={() => setPopoverDay(popoverDay === c.key ? null : c.key)}
-                className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
+                className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
                   isToday ? "font-medium text-accent" : "text-muted"
                 }`}
               >
                 {c.day}
               </button>
 
-              <div className="flex flex-col gap-0.5">
-                {items.slice(0, 3).map((d) => {
+              <div className="flex flex-col gap-1">
+                {items.slice(0, 2).map((d) => {
                   const overdue = d.due_at
                     ? isOverdue(d.due_at, d.done, now)
                     : false;
-                  const soon = d.due_at ? isDueSoon(d.due_at, now) : false;
                   return (
                     <button
                       key={d.id}
                       type="button"
+                      aria-label={d.title}
                       onClick={() => setPopoverDay(c.key)}
-                      className={`flex w-full items-center gap-1 rounded-[4px] px-1 py-0.5 text-left text-[11px] leading-tight ${
-                        d.done ? "line-through opacity-50" : overdue ? "font-medium" : ""
+                      className={`flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
+                        d.done
+                          ? "line-through opacity-50"
+                          : overdue
+                            ? "font-medium"
+                            : ""
                       }`}
-                      style={
-                        overdue
-                          ? { backgroundColor: `${d.color ?? "#DC2626"}1A` }
-                          : soon
-                            ? { backgroundColor: `${d.color ?? "#DC2626"}0D` }
-                            : undefined
-                      }
                     >
                       <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !d.done ? "ring-1 ring-[#DC2626]/40" : ""}`}
                         style={{ backgroundColor: d.color ?? "#6B7280" }}
                       />
                       <span className="truncate">{d.title}</span>
                     </button>
                   );
                 })}
-                {items.length > 3 && (
+                {items.length > 2 && (
                   <span className="px-1 text-[10px] text-muted">
-                    +{items.length - 3} more
+                    +{items.length - 2} more
                   </span>
                 )}
               </div>
 
               {popoverDay === c.key && (
-                <div className="absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3 shadow-lg">
+                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3 shadow-lg">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium">
                       {c.date.toLocaleDateString("en-GB", {
@@ -147,7 +167,10 @@ export default function MonthCalendar({
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPopoverDay(null)}
+                      onClick={() => {
+                        setPopoverDay(null);
+                        setConfirmDeleteId(null);
+                      }}
                       className="text-xs text-muted hover:text-ink"
                       aria-label="Close"
                     >
@@ -188,16 +211,26 @@ export default function MonthCalendar({
                                 setPopoverDay(null);
                                 onEdit(d);
                               }}
+                              onPointerEnter={() => {
+                                void import("@/components/EditModal");
+                              }}
                               className="text-[11px] text-muted underline-offset-2 hover:text-ink hover:underline"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
-                              onClick={() => onDelete(d.id)}
+                              onClick={() => {
+                                if (confirmDeleteId === d.id) {
+                                  onDelete(d.id);
+                                  setConfirmDeleteId(null);
+                                } else {
+                                  setConfirmDeleteId(d.id);
+                                }
+                              }}
                               className="text-[11px] text-muted underline-offset-2 hover:text-[#DC2626] hover:underline"
                             >
-                              Delete
+                              {confirmDeleteId === d.id ? "Confirm" : "Delete"}
                             </button>
                           </div>
                         </li>

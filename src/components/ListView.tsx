@@ -14,8 +14,10 @@ interface ListViewProps {
   onAdd?: () => void;
 }
 
+type Section = { key: string; label: string; items: Deadline[] };
+
 // List: overdue first (hard once-due), then upcoming, done below with
-// strikethrough. Due-soon and overdue get list labels for scanability.
+// strikethrough. Section headers aid scanability.
 export default function ListView({
   deadlines,
   loading,
@@ -24,7 +26,7 @@ export default function ListView({
   onToggle,
   onAdd,
 }: ListViewProps) {
-  const rows = useMemo(() => {
+  const sections = useMemo((): Section[] => {
     const byDue = (a: Deadline, b: Deadline) =>
       (a.due_at ? new Date(a.due_at).getTime() : Infinity) -
       (b.due_at ? new Date(b.due_at).getTime() : Infinity);
@@ -36,7 +38,11 @@ export default function ListView({
       .filter((d) => !d.due_at || new Date(d.due_at).getTime() >= now)
       .sort(byDue);
     const done = deadlines.filter((d) => d.done).sort(byDue);
-    return [...overdue, ...upcoming, ...done];
+    const out: Section[] = [];
+    if (overdue.length) out.push({ key: "overdue", label: "Overdue", items: overdue });
+    if (upcoming.length) out.push({ key: "upcoming", label: "Upcoming", items: upcoming });
+    if (done.length) out.push({ key: "done", label: "Done", items: done });
+    return out;
   }, [deadlines, now]);
 
   if (loading) {
@@ -44,13 +50,13 @@ export default function ListView({
   }
   if (deadlines.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 py-24">
-        <p className="text-sm text-muted">No deadlines yet.</p>
+      <div className="flex flex-col items-center gap-4 py-32">
+        <p className="text-sm text-muted">No deadlines yet. Paste from Moodle or a chat.</p>
         {onAdd && (
           <button
             type="button"
             onClick={onAdd}
-            className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
             Add deadlines
           </button>
@@ -60,52 +66,67 @@ export default function ListView({
   }
 
   return (
-    <ul className="divide-y divide-hairline border-y border-hairline">
-      {rows.map((d) => {
-        const overdueRow = d.due_at ? isOverdue(d.due_at, d.done, now) : false;
-        const soonRow =
-          !overdueRow && !d.done && d.due_at ? isDueSoon(d.due_at, now) : false;
-        return (
-          <li key={d.id} className="flex items-center gap-3 py-2.5 text-sm">
-            <input
-              type="checkbox"
-              checked={d.done}
-              onChange={() => onToggle(d)}
-              className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
-              aria-label={`Mark ${d.title} done`}
-            />
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ backgroundColor: d.color ?? "#6B7280" }}
-            />
-            <button
-              type="button"
-              onClick={() => onEdit(d)}
-              className={`min-w-0 flex-1 truncate text-left underline-offset-2 hover:underline ${
-                d.done ? "line-through text-muted" : ""
-              }`}
-            >
-              {d.title}
-            </button>
-            {d.module && (
-              <span className="hidden shrink-0 text-xs text-muted sm:inline">{d.module}</span>
-            )}
-            <span className="shrink-0 text-xs text-muted">
-              {d.due_at ? fmtDue(d.due_at) : "No date"}
-            </span>
-            {overdueRow && (
-              <span className="shrink-0 rounded-[4px] bg-[#DC2626]/10 px-1.5 py-0.5 text-[11px] font-medium text-[#DC2626]">
-                Overdue
-              </span>
-            )}
-            {soonRow && (
-              <span className="shrink-0 rounded-[4px] bg-accent/10 px-1.5 py-0.5 text-[11px] font-medium text-accent">
-                Due soon
-              </span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+    <div className="flex flex-col gap-6">
+      {sections.map((section) => (
+        <section key={section.key} aria-labelledby={`list-${section.key}`}>
+          <h3
+            id={`list-${section.key}`}
+            className="mb-2 border-b border-hairline pb-1 text-[11px] font-medium uppercase tracking-wide text-muted"
+          >
+            {section.label}
+          </h3>
+          <ul className="divide-y divide-hairline">
+            {section.items.map((d) => {
+              const overdueRow = d.due_at ? isOverdue(d.due_at, d.done, now) : false;
+              const soonRow =
+                !overdueRow && !d.done && d.due_at ? isDueSoon(d.due_at, now) : false;
+              return (
+                <li key={d.id} className="flex items-center gap-3 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={d.done}
+                    onChange={() => onToggle(d)}
+                    className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
+                    aria-label={`Mark ${d.title} done`}
+                  />
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: d.color ?? "#6B7280" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onEdit(d)}
+                    onPointerEnter={() => {
+                      void import("@/components/EditModal");
+                    }}
+                    className={`min-w-0 flex-1 truncate text-left text-[14px] underline-offset-2 hover:underline ${
+                      d.done ? "line-through text-muted" : ""
+                    }`}
+                  >
+                    {d.title}
+                  </button>
+                  {d.module && (
+                    <span className="hidden shrink-0 text-xs text-muted sm:inline">
+                      {d.module}
+                    </span>
+                  )}
+                  <span className="shrink-0 text-xs text-muted">
+                    {d.due_at ? fmtDue(d.due_at) : "No date"}
+                  </span>
+                  {overdueRow && (
+                    <span className="shrink-0 text-[11px] font-medium text-[#DC2626]">
+                      Overdue
+                    </span>
+                  )}
+                  {soonRow && (
+                    <span className="shrink-0 text-[11px] text-muted">Due soon</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }

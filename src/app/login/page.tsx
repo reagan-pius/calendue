@@ -83,46 +83,75 @@ export default function LoginPage() {
         ? "Create account"
         : "Sign in";
 
+  const inputCls =
+    "w-full rounded-[6px] border border-hairline bg-white px-3 py-2 text-sm outline-none focus-visible:border-accent focus-visible:ring-1 focus-visible:ring-accent";
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-[340px]">
-        <h1 className="mb-8 text-center text-xl font-medium tracking-tight">
+        <h1 className="text-center text-2xl font-medium tracking-tight text-balance">
           Calendue
         </h1>
+        <p className="mt-2 mb-8 text-center text-sm text-muted">
+          Paste deadlines. Get a clean calendar.
+        </p>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="university@email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-[6px] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-          />
-          {!magic && (
+          <div>
+            <label className="sr-only" htmlFor="login-email">
+              Email
+            </label>
             <input
-              type="password"
+              id="login-email"
+              name="email"
+              type="email"
               required
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-[6px] border border-hairline bg-white px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+              autoComplete="email"
+              spellCheck={false}
+              placeholder="university@email…"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputCls}
             />
+          </div>
+          {!magic && (
+            <div>
+              <label className="sr-only" htmlFor="login-password">
+                Password
+              </label>
+              <input
+                id="login-password"
+                name="password"
+                type="password"
+                required
+                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                placeholder="Password…"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputCls}
+              />
+            </div>
           )}
 
           <button
             type="submit"
             disabled={busy}
-            className="mt-1 rounded-[6px] bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="btn-press mt-1 rounded-[6px] bg-accent px-3 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {cta}
           </button>
         </form>
 
-        {error && <p className="mt-3 text-xs text-[#DC2626]">{error}</p>}
-        {message && <p className="mt-3 text-xs text-muted">{message}</p>}
+        {error && (
+          <p className="mt-3 text-xs text-[#DC2626]" role="alert" aria-live="polite">
+            {error}
+          </p>
+        )}
+        {message && (
+          <p className="mt-3 text-xs text-muted" role="status" aria-live="polite">
+            {message}
+          </p>
+        )}
 
         <div className="mt-5 flex items-center justify-between text-xs text-muted">
           <button

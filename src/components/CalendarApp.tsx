@@ -8,7 +8,6 @@ import ListView from "@/components/ListView";
 import type { Deadline } from "@/lib/deadlines/types";
 import { dayKeyOf, ymdLocal } from "@/lib/dates";
 
-// Modals stay out of the initial client bundle — client-only (overlay UI).
 const CaptureModal = dynamic(() => import("@/components/CaptureModal"), {
   ssr: false,
 });
@@ -16,9 +15,6 @@ const EditModal = dynamic(() => import("@/components/EditModal"), {
   ssr: false,
 });
 
-// Pick the month to view after a data load: keep the current month when it
-// holds deadlines; otherwise jump to the month of the nearest upcoming
-// deadline (pure — clock is passed in).
 function chooseCursor(
   list: Deadline[],
   current: Date,
@@ -42,9 +38,6 @@ function chooseCursor(
   return new Date(due.getFullYear(), due.getMonth(), 1);
 }
 
-// Home surface: Calendar/List toggle, month nav, capture modal, day popover,
-// toast after hybrid commit. First paint uses server-fetched deadlines;
-// subsequent reloads hit /api/deadlines (browser-local tz, spec D4).
 export default function CalendarApp({
   email,
   initialDeadlines,
@@ -53,8 +46,6 @@ export default function CalendarApp({
   initialDeadlines: Deadline[];
 }) {
   const [view, setView] = useState<View>("calendar");
-  // Cursor + wall clock stay unset until after mount — `new Date()` /
-  // Date.now() during SSR trips Cache Components prerender errors.
   const [cursor, setCursor] = useState<Date | null>(null);
   const [deadlines, setDeadlines] = useState<Deadline[]>(initialDeadlines);
   const [loading, setLoading] = useState(false);
@@ -63,6 +54,7 @@ export default function CalendarApp({
   const [toast, setToast] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [editing, setEditing] = useState<Deadline | null>(null);
+  const [creating, setCreating] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
@@ -175,6 +167,25 @@ export default function CalendarApp({
     };
   }, [loading, view, cursor, deadlines, now]);
 
+  const overdueCue = useMemo(() => {
+    if (loading || view !== "calendar" || now === 0 || !cursor) return 0;
+    const monthKey = ymdLocal(cursor).slice(0, 7);
+    const openInMonth = deadlines.some(
+      (d) =>
+        !d.done &&
+        d.due_at &&
+        dayKeyOf(d.due_at).slice(0, 7) === monthKey &&
+        new Date(d.due_at).getTime() >= now,
+    );
+    if (openInMonth) return 0;
+    return deadlines.filter(
+      (d) =>
+        !d.done &&
+        d.due_at !== null &&
+        new Date(d.due_at).getTime() < now,
+    ).length;
+  }, [loading, view, cursor, deadlines, now]);
+
   function jumpToMonth(d: Deadline) {
     if (!d.due_at) return;
     const due = new Date(d.due_at);
@@ -183,15 +194,27 @@ export default function CalendarApp({
 
   const clockReady = cursor !== null && now > 0;
 
+  function openManual() {
+    setCaptureOpen(false);
+    setCreating(true);
+  }
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
-      <TopBar view={view} onView={setView} onAdd={() => setCaptureOpen(true)} email={email} />
+      <TopBar
+        view={view}
+        onView={setView}
+        onAdd={() => setCaptureOpen(true)}
+        email={email}
+      />
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
         {view === "calendar" ? (
           <>
-            <div className="mb-4 flex items-center gap-2">
-              <h2 className="text-[15px] font-medium">{monthLabel || "\u00a0"}</h2>
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-medium tracking-tight text-balance">
+                {monthLabel || "\u00a0"}
+              </h2>
               <div className="ml-2 flex items-center">
                 <button
                   type="button"
@@ -220,7 +243,16 @@ export default function CalendarApp({
               >
                 Today
               </button>
-              {hint && (
+              {overdueCue > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  className="ml-auto text-xs font-medium text-[#DC2626] underline-offset-2 hover:underline"
+                >
+                  {overdueCue} overdue — view List ›
+                </button>
+              )}
+              {!overdueCue && hint && (
                 <button
                   type="button"
                   onClick={() => jumpToMonth(hint.deadline)}
@@ -249,15 +281,17 @@ export default function CalendarApp({
                 </button>
               </div>
             ) : deadlines.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-24">
-                <p className="text-sm text-muted">No deadlines yet. Paste from Moodle or a chat.</p>
+              <div className="flex flex-col items-center gap-4 py-32">
+                <p className="text-sm text-muted">
+                  No deadlines yet. Paste from Moodle or a chat.
+                </p>
                 <button
                   type="button"
                   onClick={() => setCaptureOpen(true)}
                   onPointerEnter={() => {
                     void import("@/components/CaptureModal");
                   }}
-                  className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+                  className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
                 >
                   Add deadlines
                 </button>
@@ -302,6 +336,7 @@ export default function CalendarApp({
       {captureOpen && (
         <CaptureModal
           onClose={() => setCaptureOpen(false)}
+          onManual={openManual}
           onDone={(msg) => {
             setCaptureOpen(false);
             setLoading(true);
@@ -311,27 +346,44 @@ export default function CalendarApp({
         />
       )}
 
-      {editing && (
+      {(editing || creating) && (
         <EditModal
           deadline={editing}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setCreating(false);
+          }}
           onSaved={(updated) => {
-            setDeadlines((ds) => ds.map((d) => (d.id === updated.id ? updated : d)));
-            setEditing(null);
-            showToast("Saved");
+            if (creating) {
+              setDeadlines((ds) => [...ds, updated]);
+              setCreating(false);
+              showToast("Added");
+              load({ jumpToNearest: true });
+            } else {
+              setDeadlines((ds) =>
+                ds.map((d) => (d.id === updated.id ? updated : d)),
+              );
+              setEditing(null);
+              showToast("Saved");
+            }
           }}
-          onDeleted={(id) => {
-            setDeadlines((ds) => ds.filter((d) => d.id !== id));
-            setEditing(null);
-            showToast("Deleted");
-          }}
+          onDeleted={
+            creating
+              ? undefined
+              : (id) => {
+                  setDeadlines((ds) => ds.filter((d) => d.id !== id));
+                  setEditing(null);
+                  showToast("Deleted");
+                }
+          }
         />
       )}
 
       {toast && (
         <div
           role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-hairline bg-canvas px-4 py-2 text-sm shadow-lg"
+          aria-live="polite"
+          className="toast-enter fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[8px] border border-hairline bg-canvas px-4 py-2 text-sm shadow-lg"
         >
           {toast}
         </div>
