@@ -73,10 +73,13 @@ interface MonthCalendarProps {
   onEdit: (d: Deadline) => void;
   onDelete: (id: string) => void;
   onToggle: (d: Deadline) => void;
+  /** Open manual create with this local YYYY-MM-DD. */
+  onAdd: (dayKey: string) => void;
 }
 
-// Spec: hairline month grid, quiet day numbers, type-colored chips, no cell
-// fills; click day/chip for popover with that day's deadlines + edit.
+// Spec: hairline month grid, quiet day numbers, type-colored chips;
+// today cell lightly tinted; click day/chip for popover with that day's
+// deadlines + edit; empty popover can add for that date.
 export default function MonthCalendar({
   cursor,
   now,
@@ -84,6 +87,7 @@ export default function MonthCalendar({
   onEdit,
   onDelete,
   onToggle,
+  onAdd,
 }: MonthCalendarProps) {
   const [popoverDay, setPopoverDay] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -166,8 +170,8 @@ export default function MonthCalendar({
             <div
               key={c.key}
               className={`relative min-h-[104px] border-b border-r border-hairline p-1.5 ${
-                popoverDay === c.key ? "z-30" : ""
-              }`}
+                isToday ? "bg-accent/5" : ""
+              } ${popoverDay === c.key ? "z-30" : ""}`}
             >
               <button
                 type="button"
@@ -230,7 +234,23 @@ export default function MonthCalendar({
                   </div>
 
                   {popoverItems.length === 0 ? (
-                    <p className="text-xs text-muted">Nothing due.</p>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-muted">Nothing due</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPopoverDay(null);
+                          setConfirmDeleteId(null);
+                          onAdd(c.key);
+                        }}
+                        onPointerEnter={() => {
+                          void import("@/components/EditModal");
+                        }}
+                        className="self-start text-xs font-medium text-accent underline-offset-2 hover:underline"
+                      >
+                        Add
+                      </button>
+                    </div>
                   ) : (
                     <ul className="flex flex-col divide-y divide-hairline">
                       {popoverItems.map((d) => (

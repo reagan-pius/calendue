@@ -13,6 +13,8 @@ import { combineLocal, splitIso } from "@/lib/dates";
 interface EditModalProps {
   /** Existing deadline to edit, or null to create manually. */
   deadline: Deadline | null;
+  /** Local YYYY-MM-DD when creating from a calendar day. */
+  initialDate?: string;
   onClose: () => void;
   onSaved: (d: Deadline) => void;
   onDeleted?: (id: string) => void;
@@ -24,10 +26,18 @@ const labelCls = "mb-1 block text-[11px] text-muted";
 
 // Manual create/edit after save (spec UX step 8): title/date/time/type/
 // module/description + per-deadline color override.
-export default function EditModal({ deadline, onClose, onSaved, onDeleted }: EditModalProps) {
+export default function EditModal({
+  deadline,
+  initialDate,
+  onClose,
+  onSaved,
+  onDeleted,
+}: EditModalProps) {
   const titleId = useId();
   const creating = deadline === null;
-  const initial = deadline?.due_at ? splitIso(deadline.due_at) : { date: "", time: "" };
+  const initial = deadline?.due_at
+    ? splitIso(deadline.due_at)
+    : { date: initialDate ?? "", time: "" };
   const [title, setTitle] = useState(deadline?.title ?? "");
   const [description, setDescription] = useState(deadline?.description ?? "");
   const [date, setDate] = useState(initial.date);

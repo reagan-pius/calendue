@@ -55,6 +55,7 @@ export default function CalendarApp({
   const [captureOpen, setCaptureOpen] = useState(false);
   const [editing, setEditing] = useState<Deadline | null>(null);
   const [creating, setCreating] = useState(false);
+  const [createDate, setCreateDate] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusOverdueRef = useRef(false);
 
@@ -204,20 +205,23 @@ export default function CalendarApp({
 
   const clockReady = cursor !== null && now > 0;
 
-  function openManual() {
+  function openManual(date?: string) {
     setCaptureOpen(false);
     setEditing(null);
+    setCreateDate(date ?? null);
     setCreating(true);
   }
 
   function openEdit(d: Deadline) {
     setCreating(false);
+    setCreateDate(null);
     setEditing(d);
   }
 
   function closeEditModal() {
     setEditing(null);
     setCreating(false);
+    setCreateDate(null);
   }
 
   function openCapture() {
@@ -333,6 +337,7 @@ export default function CalendarApp({
                 onEdit={openEdit}
                 onDelete={removeDeadline}
                 onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
+                onAdd={(dayKey) => openManual(dayKey)}
               />
             )}
           </>
@@ -378,6 +383,7 @@ export default function CalendarApp({
       {(editing || creating) && (
         <EditModal
           deadline={creating ? null : editing}
+          initialDate={creating ? (createDate ?? undefined) : undefined}
           onClose={closeEditModal}
           onSaved={(updated) => {
             if (creating) {
