@@ -8,9 +8,13 @@ import ListView from "@/components/ListView";
 import type { Deadline } from "@/lib/deadlines/types";
 import { dayKeyOf, ymdLocal } from "@/lib/dates";
 
-// Modals stay out of the initial client bundle — loaded on first open.
-const CaptureModal = dynamic(() => import("@/components/CaptureModal"));
-const EditModal = dynamic(() => import("@/components/EditModal"));
+// Modals stay out of the initial client bundle — client-only (overlay UI).
+const CaptureModal = dynamic(() => import("@/components/CaptureModal"), {
+  ssr: false,
+});
+const EditModal = dynamic(() => import("@/components/EditModal"), {
+  ssr: false,
+});
 
 // Pick the month to view after a data load: keep the current month when it
 // holds deadlines; otherwise jump to the month of the nearest upcoming
@@ -49,14 +53,12 @@ export default function CalendarApp({
   initialDeadlines: Deadline[];
 }) {
   const [view, setView] = useState<View>("calendar");
-  const [cursor, setCursor] = useState(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
+  // Cursor + wall clock stay unset until after mount — `new Date()` /
+  // Date.now() during SSR trips Cache Components prerender errors.
+  const [cursor, setCursor] = useState<Date | null>(null);
   const [deadlines, setDeadlines] = useState<Deadline[]>(initialDeadlines);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Wall clock set in layout effect (not during render — purity / hydration).
   const [now, setNow] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
@@ -64,7 +66,9 @@ export default function CalendarApp({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useLayoutEffect(() => {
-    setNow(Date.now());
+    const n = new Date();
+    setNow(n.getTime());
+    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
   }, []);
 
   const load = useCallback(async (opts?: { jumpToNearest?: boolean }) => {
@@ -80,7 +84,13 @@ export default function CalendarApp({
       setDeadlines(list);
       setLoadError(null);
       if (opts?.jumpToNearest) {
-        setCursor((c) => chooseCursor(list, c, todayStart));
+        setCursor((c) =>
+          chooseCursor(
+            list,
+            c ?? new Date(todayStart.getFullYear(), todayStart.getMonth(), 1),
+            todayStart,
+          ),
+        );
       }
     } catch {
       setLoadError("Couldn’t load deadlines.");
@@ -123,7 +133,10 @@ export default function CalendarApp({
   }
 
   function stepMonth(delta: number) {
-    setCursor((c) => new Date(c.getFullYear(), c.getMonth() + delta, 1));
+    setCursor((c) => {
+      if (!c) return c;
+      return new Date(c.getFullYear(), c.getMonth() + delta, 1);
+    });
   }
 
   function goToday() {
@@ -131,13 +144,15 @@ export default function CalendarApp({
     setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
   }
 
-  const monthLabel = cursor.toLocaleDateString("en-GB", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = cursor
+    ? cursor.toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+      })
+    : "";
 
   const hint = useMemo(() => {
-    if (loading || view !== "calendar" || now === 0) return null;
+    if (loading || view !== "calendar" || now === 0 || !cursor) return null;
     const monthKey = ymdLocal(cursor).slice(0, 7);
     const inMonth = deadlines.some(
       (d) => d.due_at && dayKeyOf(d.due_at).slice(0, 7) === monthKey,
@@ -166,6 +181,8 @@ export default function CalendarApp({
     setCursor(new Date(due.getFullYear(), due.getMonth(), 1));
   }
 
+  const clockReady = cursor !== null && now > 0;
+
   return (
     <div className="min-h-screen bg-canvas text-ink">
       <TopBar view={view} onView={setView} onAdd={() => setCaptureOpen(true)} email={email} />
@@ -174,13 +191,14 @@ export default function CalendarApp({
         {view === "calendar" ? (
           <>
             <div className="mb-4 flex items-center gap-2">
-              <h2 className="text-[15px] font-medium">{monthLabel}</h2>
+              <h2 className="text-[15px] font-medium">{monthLabel || "\u00a0"}</h2>
               <div className="ml-2 flex items-center">
                 <button
                   type="button"
                   aria-label="Previous month"
                   onClick={() => stepMonth(-1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink"
+                  disabled={!clockReady}
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink disabled:opacity-40"
                 >
                   ‹
                 </button>
@@ -188,7 +206,8 @@ export default function CalendarApp({
                   type="button"
                   aria-label="Next month"
                   onClick={() => stepMonth(1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink"
+                  disabled={!clockReady}
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink disabled:opacity-40"
                 >
                   ›
                 </button>
@@ -196,7 +215,8 @@ export default function CalendarApp({
               <button
                 type="button"
                 onClick={goToday}
-                className="ml-2 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+                disabled={!clockReady}
+                className="ml-2 text-xs text-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-40"
               >
                 Today
               </button>
@@ -212,7 +232,7 @@ export default function CalendarApp({
               )}
             </div>
 
-            {loading ? (
+            {!clockReady || loading ? (
               <p className="py-16 text-center text-sm text-muted">Loading…</p>
             ) : loadError ? (
               <div className="flex flex-col items-center gap-3 py-24">
@@ -242,15 +262,16 @@ export default function CalendarApp({
                   Add deadlines
                 </button>
               </div>
-            ) : (
+            ) : cursor ? (
               <MonthCalendar
                 cursor={cursor}
+                now={now}
                 deadlines={deadlines}
                 onEdit={setEditing}
                 onDelete={removeDeadline}
                 onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
               />
-            )}
+            ) : null}
           </>
         ) : loadError && !loading ? (
           <div className="flex flex-col items-center gap-3 py-24">

@@ -53,11 +53,11 @@ export function combineLocal(date: string, time?: string): string {
 }
 
 /** "Due soon" = within the next 7 days (spec UX flow step 7). */
-export function isDueSoon(iso: string, now = Date.now()): boolean {
+export function isDueSoon(iso: string, now: number): boolean {
   const t = new Date(iso).getTime();
   return t >= now && t - now <= 7 * 24 * 60 * 60 * 1000;
 }
 
-export function isOverdue(iso: string, done: boolean, now = Date.now()): boolean {
+export function isOverdue(iso: string, done: boolean, now: number): boolean {
   return !done && new Date(iso).getTime() < now;
 }

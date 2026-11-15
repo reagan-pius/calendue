@@ -8,6 +8,8 @@ const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 interface MonthCalendarProps {
   cursor: Date;
+  /** Epoch ms from parent (set after mount); avoids Date.now() during SSR. */
+  now: number;
   deadlines: Deadline[];
   onEdit: (d: Deadline) => void;
   onDelete: (id: string) => void;
@@ -18,6 +20,7 @@ interface MonthCalendarProps {
 // fills; click day/chip for popover with that day's deadlines + edit.
 export default function MonthCalendar({
   cursor,
+  now,
   deadlines,
   onEdit,
   onDelete,
@@ -52,7 +55,7 @@ export default function MonthCalendar({
     });
   }, [cursor]);
 
-  const todayKey = ymdLocal(new Date());
+  const todayKey = now > 0 ? ymdLocal(new Date(now)) : null;
   const popoverItems = popoverDay ? (byDay.get(popoverDay) ?? []) : [];
 
   return (
@@ -97,8 +100,10 @@ export default function MonthCalendar({
 
               <div className="flex flex-col gap-0.5">
                 {items.slice(0, 3).map((d) => {
-                  const overdue = d.due_at ? isOverdue(d.due_at, d.done) : false;
-                  const soon = d.due_at ? isDueSoon(d.due_at) : false;
+                  const overdue = d.due_at
+                    ? isOverdue(d.due_at, d.done, now)
+                    : false;
+                  const soon = d.due_at ? isDueSoon(d.due_at, now) : false;
                   return (
                     <button
                       key={d.id}
