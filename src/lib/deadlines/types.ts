@@ -32,7 +32,6 @@ export function isDeadlineType(value: string): value is DeadlineType {
 
 export interface Deadline {
   id: string;
-  user_id: string;
   title: string;
   description: string | null;
   due_at: string | null;
@@ -41,8 +40,10 @@ export interface Deadline {
   color: string | null;
   done: boolean;
   source: string;
-  parse_confidence: number | null;
-  parse_session_id: string | null;
-  created_at: string;
-  updated_at: string;
+  // Optional server-only / calibration fields — omitted from lean list selects.
+  user_id?: string;
+  parse_confidence?: number | null;
+  parse_session_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }

@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TYPE_COLORS, isDeadlineType } from "@/lib/deadlines/types";
-
-const COLUMNS =
-  "id, user_id, title, description, due_at, type, module, color, done, source, parse_confidence, parse_session_id, created_at, updated_at";
+import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -62,7 +60,7 @@ export async function PATCH(req: Request, { params }: Params) {
     .from("deadlines")
     .update(patch)
     .eq("id", id)
-    .select(COLUMNS);
+    .select(DEADLINE_COLUMNS);
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

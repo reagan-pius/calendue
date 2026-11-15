@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TYPE_COLORS, isDeadlineType } from "@/lib/deadlines/types";
-
-const COLUMNS =
-  "id, user_id, title, description, due_at, type, module, color, done, source, parse_confidence, parse_session_id, created_at, updated_at";
+import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
 // GET /api/deadlines?from=<iso>&to=<iso> — session-scoped via RLS.
 export async function GET(req: Request) {
@@ -21,7 +19,7 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from("deadlines")
-    .select(COLUMNS)
+    .select(DEADLINE_COLUMNS)
     .order("due_at", { ascending: true, nullsFirst: false });
   if (from) query = query.gte("due_at", from);
   if (to) query = query.lte("due_at", to);
@@ -94,7 +92,7 @@ export async function POST(req: Request) {
           ? body.parse_session_id
           : null,
     })
-    .select(COLUMNS)
+    .select(DEADLINE_COLUMNS)
     .single();
 
   if (error) {

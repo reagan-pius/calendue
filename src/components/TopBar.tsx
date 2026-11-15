@@ -51,7 +51,10 @@ export default function TopBar({ view, onView, onAdd, email }: TopBarProps) {
         <button
           type="button"
           onClick={onAdd}
-          className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          onPointerEnter={() => {
+            void import("@/components/CaptureModal");
+          }}
+          className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
         >
           Add deadlines
         </button>

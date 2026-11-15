@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseDeadlines } from "@/lib/parser";
 import { AUTO_COMMIT_THRESHOLD } from "@/lib/parser/threshold";
+import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
 // POST /api/parse — { text, tz } -> { autoCommit[], needsReview[] }.
 // Trust rules (spec): auto-commit only at confidence >= threshold; uncertain
@@ -43,7 +44,26 @@ export async function POST(req: Request) {
     (i) => !(i.confidence >= AUTO_COMMIT_THRESHOLD && i.due_at !== null),
   );
 
-  let saved: { id: string }[] = [];
+  // Session first so auto-commits can carry parse_session_id in one insert
+  // (avoids a follow-up UPDATE on the critical path).
+  const { data: parseSession, error: sessionError } = await supabase
+    .from("parse_sessions")
+    .insert({
+      user_id: user.id,
+      raw_text: text,
+      results: [
+        ...auto.map((i) => ({ ...i, auto_committed: true })),
+        ...review.map((i) => ({ ...i, auto_committed: false })),
+      ],
+    })
+    .select("id")
+    .single();
+
+  if (sessionError) {
+    return NextResponse.json({ error: sessionError.message }, { status: 500 });
+  }
+
+  let saved: Record<string, unknown>[] = [];
   if (auto.length > 0) {
     const { data, error } = await supabase
       .from("deadlines")
@@ -57,38 +77,32 @@ export async function POST(req: Request) {
           color: i.color,
           source: "paste",
           parse_confidence: i.confidence,
+          parse_session_id: parseSession.id,
         })),
       )
-      .select();
+      .select(DEADLINE_COLUMNS);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     saved = data ?? [];
   }
 
-  const results = [
-    ...saved.map((row, idx) => ({
-      ...auto[idx],
-      deadline_id: row.id,
-      auto_committed: true,
-    })),
-    ...review.map((i) => ({ ...i, auto_committed: false })),
-  ];
-
-  const { data: parseSession } = await supabase
-    .from("parse_sessions")
-    .insert({ user_id: user.id, raw_text: text, results })
-    .select()
-    .single();
-
-  if (parseSession && saved.length > 0) {
-    await supabase
-      .from("deadlines")
-      .update({ parse_session_id: parseSession.id })
-      .in(
-        "id",
-        saved.map((r) => r.id),
-      );
+  // Enrich session results with deadline ids off the response path.
+  if (saved.length > 0 && parseSession?.id) {
+    const results = [
+      ...saved.map((row, idx) => ({
+        ...auto[idx],
+        deadline_id: row.id,
+        auto_committed: true,
+      })),
+      ...review.map((i) => ({ ...i, auto_committed: false })),
+    ];
+    after(async () => {
+      await supabase
+        .from("parse_sessions")
+        .update({ results })
+        .eq("id", parseSession.id);
+    });
   }
 
   return NextResponse.json({

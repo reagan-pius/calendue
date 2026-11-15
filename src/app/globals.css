@@ -6,6 +6,7 @@
   --muted: oklch(55% 0.01 260);
   --hairline: oklch(92% 0.005 260);
   --accent: oklch(55% 0.15 250);
+  --motion: 100ms;
 }
 
 @theme inline {
@@ -15,12 +16,21 @@
   --color-hairline: var(--hairline);
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
 body {
   background: var(--canvas);
   color: var(--ink);
+}
+
+/* Snappy chrome transitions — keep motion short so UI feels immediate. */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  a {
+    transition-property: color, background-color, border-color, opacity;
+    transition-duration: var(--motion);
+    transition-timing-function: ease-out;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

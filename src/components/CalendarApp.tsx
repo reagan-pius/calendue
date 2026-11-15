@@ -1,13 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import TopBar, { type View } from "@/components/TopBar";
 import MonthCalendar from "@/components/MonthCalendar";
 import ListView from "@/components/ListView";
-import CaptureModal from "@/components/CaptureModal";
-import EditModal from "@/components/EditModal";
 import type { Deadline } from "@/lib/deadlines/types";
 import { dayKeyOf, ymdLocal } from "@/lib/dates";
+
+// Modals stay out of the initial client bundle — loaded on first open.
+const CaptureModal = dynamic(() => import("@/components/CaptureModal"));
+const EditModal = dynamic(() => import("@/components/EditModal"));
 
 // Pick the month to view after a data load: keep the current month when it
 // holds deadlines; otherwise jump to the month of the nearest upcoming
@@ -36,24 +39,33 @@ function chooseCursor(
 }
 
 // Home surface: Calendar/List toggle, month nav, capture modal, day popover,
-// toast after hybrid commit. Data is fetched client-side in browser-local tz
-// (spec D4). One fetch returns ALL deadlines: List shows every entry; the
-// month grid filters by the viewed month.
-export default function CalendarApp({ email }: { email: string }) {
+// toast after hybrid commit. First paint uses server-fetched deadlines;
+// subsequent reloads hit /api/deadlines (browser-local tz, spec D4).
+export default function CalendarApp({
+  email,
+  initialDeadlines,
+}: {
+  email: string;
+  initialDeadlines: Deadline[];
+}) {
   const [view, setView] = useState<View>("calendar");
   const [cursor, setCursor] = useState(() => {
     const n = new Date();
     return new Date(n.getFullYear(), n.getMonth(), 1);
   });
-  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [deadlines, setDeadlines] = useState<Deadline[]>(initialDeadlines);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Wall clock sampled in async load (not during render — purity rules).
+  // Wall clock set in layout effect (not during render — purity / hydration).
   const [now, setNow] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [editing, setEditing] = useState<Deadline | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useLayoutEffect(() => {
+    setNow(Date.now());
+  }, []);
 
   const load = useCallback(async (opts?: { jumpToNearest?: boolean }) => {
     const todayStart = new Date();
@@ -68,13 +80,8 @@ export default function CalendarApp({ email }: { email: string }) {
       setDeadlines(list);
       setLoadError(null);
       if (opts?.jumpToNearest) {
-        // After a capture: never sit on an empty month when the fresh
-        // deadlines live elsewhere.
         setCursor((c) => chooseCursor(list, c, todayStart));
       }
-      // Login/first load: no jump — always land on today's month (the
-      // cursor initialises to today; the header hint surfaces deadlines
-      // that live in other months).
     } catch {
       setLoadError("Couldn’t load deadlines.");
     } finally {
@@ -83,14 +90,16 @@ export default function CalendarApp({ email }: { email: string }) {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 3500);
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   async function patchDeadline(id: string, patch: Record<string, unknown>) {
@@ -127,8 +136,6 @@ export default function CalendarApp({ email }: { email: string }) {
     year: "numeric",
   });
 
-  // Quiet pointer: when the viewed month (today's month on login) has no
-  // deadlines but upcoming ones exist elsewhere, show where the next one is.
   const hint = useMemo(() => {
     if (loading || view !== "calendar" || now === 0) return null;
     const monthKey = ymdLocal(cursor).slice(0, 7);
@@ -173,7 +180,7 @@ export default function CalendarApp({ email }: { email: string }) {
                   type="button"
                   aria-label="Previous month"
                   onClick={() => stepMonth(-1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-black/5 hover:text-ink"
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink"
                 >
                   ‹
                 </button>
@@ -181,7 +188,7 @@ export default function CalendarApp({ email }: { email: string }) {
                   type="button"
                   aria-label="Next month"
                   onClick={() => stepMonth(1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted transition-colors hover:bg-black/5 hover:text-ink"
+                  className="flex h-7 w-7 items-center justify-center rounded-[6px] text-muted hover:bg-black/5 hover:text-ink"
                 >
                   ›
                 </button>
@@ -189,7 +196,7 @@ export default function CalendarApp({ email }: { email: string }) {
               <button
                 type="button"
                 onClick={goToday}
-                className="ml-2 text-xs text-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+                className="ml-2 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
               >
                 Today
               </button>
@@ -198,7 +205,7 @@ export default function CalendarApp({ email }: { email: string }) {
                   type="button"
                   onClick={() => jumpToMonth(hint.deadline)}
                   title="Jump to the next upcoming deadline"
-                  className="ml-auto max-w-[55%] truncate text-xs text-muted underline-offset-2 transition-colors hover:text-ink hover:underline"
+                  className="ml-auto max-w-[55%] truncate text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
                 >
                   Next: {hint.label} ›
                 </button>
@@ -216,7 +223,7 @@ export default function CalendarApp({ email }: { email: string }) {
                     setLoading(true);
                     load();
                   }}
-                  className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink"
+                  className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted hover:text-ink"
                 >
                   Try again
                 </button>
@@ -227,7 +234,10 @@ export default function CalendarApp({ email }: { email: string }) {
                 <button
                   type="button"
                   onClick={() => setCaptureOpen(true)}
-                  className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  onPointerEnter={() => {
+                    void import("@/components/CaptureModal");
+                  }}
+                  className="rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
                 >
                   Add deadlines
                 </button>
@@ -251,7 +261,7 @@ export default function CalendarApp({ email }: { email: string }) {
                 setLoading(true);
                 load();
               }}
-              className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted transition-colors hover:text-ink"
+              className="rounded-[6px] border border-hairline px-3 py-1.5 text-sm text-muted hover:text-ink"
             >
               Try again
             </button>
@@ -273,6 +283,7 @@ export default function CalendarApp({ email }: { email: string }) {
           onClose={() => setCaptureOpen(false)}
           onDone={(msg) => {
             setCaptureOpen(false);
+            setLoading(true);
             load({ jumpToNearest: true });
             showToast(msg);
           }}

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CalendarApp from "@/components/CalendarApp";
+import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
+import type { Deadline } from "@/lib/deadlines/types";
 
 // Session-gated home: blocking per-request render (cookies) under cacheComponents.
 export const instant = false;
@@ -15,5 +17,17 @@ export default async function Home() {
     redirect("/login");
   }
 
-  return <CalendarApp email={user.email ?? ""} />;
+  // Fetch deadlines on the server so the first paint skips the client
+  // /api/deadlines waterfall (auth already paid for above).
+  const { data } = await supabase
+    .from("deadlines")
+    .select(DEADLINE_COLUMNS)
+    .order("due_at", { ascending: true, nullsFirst: false });
+
+  return (
+    <CalendarApp
+      email={user.email ?? ""}
+      initialDeadlines={(data as Deadline[] | null) ?? []}
+    />
+  );
 }
