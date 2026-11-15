@@ -1,10 +1,59 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Deadline } from "@/lib/deadlines/types";
 import { dayKeyOf, fmtTime, isOverdue, ymdLocal } from "@/lib/dates";
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+function DeadlineChip({
+  deadline,
+  overdue,
+  onOpen,
+}: {
+  deadline: Deadline;
+  overdue: boolean;
+  onOpen: () => void;
+}) {
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [tip, setTip] = useState(false);
+
+  return (
+    <button
+      type="button"
+      aria-label={deadline.title}
+      onClick={onOpen}
+      onPointerEnter={() => {
+        const el = labelRef.current;
+        setTip(!!el && el.scrollWidth > el.clientWidth);
+      }}
+      onPointerLeave={() => setTip(false)}
+      className={`relative flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
+        deadline.done
+          ? "line-through text-muted"
+          : overdue
+            ? "font-medium text-ink"
+            : "text-ink"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !deadline.done ? "ring-1 ring-[#DC2626]/70" : ""}`}
+        style={{ backgroundColor: deadline.color ?? "#6B7280" }}
+      />
+      <span ref={labelRef} className="truncate">
+        {deadline.title}
+      </span>
+      {tip ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-0 z-40 mb-1 max-w-[240px] rounded-[4px] border border-hairline bg-canvas px-2 py-1 text-[11px] leading-snug font-normal text-ink normal-case no-underline shadow-sm"
+        >
+          {deadline.title}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 interface MonthCalendarProps {
   cursor: Date;
@@ -131,26 +180,12 @@ export default function MonthCalendar({
                     ? isOverdue(d.due_at, d.done, now)
                     : false;
                   return (
-                    <button
+                    <DeadlineChip
                       key={d.id}
-                      type="button"
-                      aria-label={d.title}
-                      title={d.title}
-                      onClick={() => setPopoverDay(c.key)}
-                      className={`flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${
-                        d.done
-                          ? "line-through text-muted"
-                          : overdue
-                            ? "font-medium text-ink"
-                            : "text-ink"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !d.done ? "ring-1 ring-[#DC2626]/70" : ""}`}
-                        style={{ backgroundColor: d.color ?? "#6B7280" }}
-                      />
-                      <span className="truncate">{d.title}</span>
-                    </button>
+                      deadline={d}
+                      overdue={overdue}
+                      onOpen={() => setPopoverDay(c.key)}
+                    />
                   );
                 })}
                 {items.length > 2 && (
