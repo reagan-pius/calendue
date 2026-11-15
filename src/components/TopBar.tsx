@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export type View = "calendar" | "list";
 
@@ -29,8 +28,7 @@ export default function TopBar({ view, onView, onAdd, email }: TopBarProps) {
   }, [menuOpen]);
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch("/auth/signout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }

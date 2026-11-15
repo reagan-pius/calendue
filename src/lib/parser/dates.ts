@@ -4,7 +4,9 @@
 // ("noon Fri" AND "6th November 2026"), so we merge: the date comes from the
 // match with the most certain date components, the time-of-day from the first
 // match with a certain hour.
-import * as chrono from "chrono-node";
+//
+// Import en.GB only — full chrono-node pulls every locale into the parse path.
+import { GB, type ParsingOption } from "chrono-node/en";
 
 const RELATIVE_UNIT_RE =
   /\b(next|last|this|coming)\s+(week|month|year)\b/i;
@@ -12,6 +14,10 @@ const RELATIVE_UNIT_RE =
 // Moodle-style trailing age: " - 17 days", " - 1 month and 7 days"
 const RELATIVE_AGE_SUFFIX_RE =
   /\s*[-\u2013]\s*\d+\s*(?:day|week|month|year)s?(?:\s+and\s+\d+\s*(?:day|week|month|year)s?)?\s*$/i;
+
+/** Cheap gate before chrono — skips titles like "15 CATS" with no date cues. */
+const DATE_HINT_RE =
+  /\b(?:due|deadline|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:rs(?:day)?)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|today|tomorrow|yesterday|next|last|noon|midnight|\d{1,2}(?:st|nd|rd|th)?|\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\b/i;
 
 export interface ResolvedDate {
   /** ISO UTC instant, or null when no date could be resolved. */
@@ -23,8 +29,8 @@ export interface ResolvedDate {
   dateTexts: string[];
 }
 
-function chronoOpts(tz: string): chrono.ParsingOption {
-  return { forwardDate: true, timezone: tz } as chrono.ParsingOption;
+function chronoOpts(tz: string): ParsingOption {
+  return { forwardDate: true, timezone: tz } as ParsingOption;
 }
 
 function stripAge(line: string): string {
@@ -74,7 +80,7 @@ function wallClockToUtc(
 
 export function resolveDate(line: string, tz: string, ref: Date): ResolvedDate {
   const cleaned = stripAge(line);
-  const matches = chrono.parse(cleaned, ref, chronoOpts(tz));
+  const matches = GB.parse(cleaned, ref, chronoOpts(tz));
   if (matches.length === 0) {
     return {
       due: null,
@@ -146,7 +152,8 @@ export function resolveDate(line: string, tz: string, ref: Date): ResolvedDate {
  */
 export function isDateLine(line: string, ref: Date, tz: string): boolean {
   const cleaned = stripAge(line);
-  const matches = chrono.parse(cleaned, ref, chronoOpts(tz));
+  if (!DATE_HINT_RE.test(cleaned)) return false;
+  const matches = GB.parse(cleaned, ref, chronoOpts(tz));
   if (matches.length === 0) return false;
   if (/\bdue\b|\bdeadline\b/i.test(line)) return true;
   return matches.some(

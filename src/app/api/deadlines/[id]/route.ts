@@ -5,6 +5,30 @@ import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
 
 type Params = { params: Promise<{ id: string }> };
 
+// GET /api/deadlines/[id] — full row for edit (includes description).
+export async function GET(_req: Request, { params }: Params) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { id } = await params;
+  const { data, error } = await supabase
+    .from("deadlines")
+    .select(DEADLINE_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json(data);
+}
+
 // PATCH /api/deadlines/[id] — partial update; RLS scopes to the session user.
 export async function PATCH(req: Request, { params }: Params) {
   const supabase = await createClient();

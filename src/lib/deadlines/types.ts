@@ -33,7 +33,8 @@ export function isDeadlineType(value: string): value is DeadlineType {
 export interface Deadline {
   id: string;
   title: string;
-  description: string | null;
+  /** Present on create/edit payloads; omitted from list/calendar selects. */
+  description?: string | null;
   due_at: string | null;
   type: DeadlineType;
   module: string | null;

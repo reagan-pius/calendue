@@ -5,12 +5,14 @@ import {
   DEADLINE_TYPES,
   TYPE_LABELS,
   isDeadlineType,
+  type Deadline,
 } from "@/lib/deadlines/types";
 import { combineLocal, splitIso } from "@/lib/dates";
 
 interface CaptureModalProps {
   onClose: () => void;
-  onDone: (toast: string) => void;
+  /** Toast + rows already persisted so the calendar can merge without refetch. */
+  onDone: (toast: string, added?: Deadline[]) => void;
   onManual: () => void;
 }
 
@@ -46,13 +48,14 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pendingAuto, setPendingAuto] = useState(0);
+  const [pendingAutoRows, setPendingAutoRows] = useState<Deadline[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const needsDate = rows.some((r) => !r.dropped && !r.date);
 
   function dismiss() {
     if (step === "review" && pendingAuto > 0) {
-      onDone(toastParts(pendingAuto, 0, true));
+      onDone(toastParts(pendingAuto, 0, true), pendingAutoRows);
       return;
     }
     onClose();
@@ -75,7 +78,7 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         throw new Error(body?.error ?? "Parse failed");
       }
       const data = (await res.json()) as {
-        autoCommitCount: number;
+        autoCommit: Deadline[];
         needsReview: {
           raw: string;
           title: string;
@@ -85,8 +88,9 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         }[];
         parseSessionId: string | null;
       };
+      const committed = data.autoCommit ?? [];
       if (data.needsReview.length === 0) {
-        onDone(toastParts(data.autoCommitCount, 0, false));
+        onDone(toastParts(committed.length, 0, false), committed);
         return;
       }
       setRows(
@@ -104,7 +108,8 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
         }),
       );
       setStep("review");
-      setPendingAuto(data.autoCommitCount);
+      setPendingAuto(committed.length);
+      setPendingAutoRows(committed);
       setSessionId(data.parseSessionId ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Parse failed");
@@ -119,27 +124,29 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
     try {
       const kept = rows.filter((r) => !r.dropped && r.date);
       if (kept.length === 0) {
-        onDone(toastParts(pendingAuto, 0, false));
+        onDone(toastParts(pendingAuto, 0, false), pendingAutoRows);
         return;
       }
-      const results = await Promise.all(
-        kept.map((r) =>
-          fetch("/api/deadlines", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: r.title,
-              due_at: combineLocal(r.date, r.time),
-              type: r.type,
-              module: r.module || null,
-              source: "paste",
-              parse_session_id: sessionId,
-            }),
-          }),
-        ),
-      );
-      if (results.some((r) => !r.ok)) throw new Error("Could not save some items");
-      onDone(toastParts(pendingAuto, kept.length, false));
+      const res = await fetch("/api/deadlines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: kept.map((r) => ({
+            title: r.title,
+            due_at: combineLocal(r.date, r.time),
+            type: r.type,
+            module: r.module || null,
+            source: "paste",
+            parse_session_id: sessionId,
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error("Could not save some items");
+      const confirmed = (await res.json()) as Deadline[];
+      onDone(toastParts(pendingAuto, confirmed.length, false), [
+        ...pendingAutoRows,
+        ...confirmed,
+      ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
     } finally {

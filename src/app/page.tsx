@@ -2,7 +2,7 @@ import { connection } from "next/server";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import CalendarApp from "@/components/CalendarApp";
-import { DEADLINE_COLUMNS } from "@/lib/deadlines/query";
+import { DEADLINE_LIST_COLUMNS } from "@/lib/deadlines/query";
 import type { Deadline } from "@/lib/deadlines/types";
 
 // Session-gated home: blocking per-request render (cookies) under cacheComponents.
@@ -26,7 +26,7 @@ export default async function Home() {
   // /api/deadlines waterfall (auth already paid for above).
   const { data } = await supabase
     .from("deadlines")
-    .select(DEADLINE_COLUMNS)
+    .select(DEADLINE_LIST_COLUMNS)
     .order("due_at", { ascending: true, nullsFirst: false });
 
   return (

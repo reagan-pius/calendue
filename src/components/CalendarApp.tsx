@@ -4,7 +4,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import dynamic from "next/dynamic";
 import TopBar, { type View } from "@/components/TopBar";
 import MonthCalendar from "@/components/MonthCalendar";
-import ListView from "@/components/ListView";
 import type { Deadline } from "@/lib/deadlines/types";
 import { dayKeyOf, isOverdue, ymdLocal } from "@/lib/dates";
 
@@ -13,6 +12,12 @@ const CaptureModal = dynamic(() => import("@/components/CaptureModal"), {
 });
 const EditModal = dynamic(() => import("@/components/EditModal"), {
   ssr: false,
+});
+const ListView = dynamic(() => import("@/components/ListView"), {
+  ssr: false,
+  loading: () => (
+    <p className="py-16 text-center text-sm text-muted">Loading…</p>
+  ),
 });
 
 function chooseCursor(
@@ -212,9 +217,39 @@ export default function CalendarApp({
     setCreating(true);
   }
 
-  function openEdit(d: Deadline) {
+  function mergeDeadlines(added: Deadline[], jumpToNearest = true) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    setDeadlines((ds) => {
+      const seen = new Set(ds.map((d) => d.id));
+      const next = [...ds, ...added.filter((d) => !seen.has(d.id))];
+      if (jumpToNearest) {
+        const month =
+          cursor ??
+          new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+        // Defer cursor so we don't setState inside another updater.
+        queueMicrotask(() => {
+          setCursor(chooseCursor(next, month, todayStart));
+        });
+      }
+      return next;
+    });
+    setNow(Date.now());
+  }
+
+  async function openEdit(d: Deadline) {
     setCreating(false);
     setCreateDate(null);
+    setCaptureOpen(false);
+    try {
+      const res = await fetch(`/api/deadlines/${d.id}`);
+      if (res.ok) {
+        setEditing((await res.json()) as Deadline);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
     setEditing(d);
   }
 
@@ -399,10 +434,9 @@ export default function CalendarApp({
         <CaptureModal
           onClose={() => setCaptureOpen(false)}
           onManual={openManual}
-          onDone={(msg) => {
+          onDone={(msg, added) => {
             setCaptureOpen(false);
-            setLoading(true);
-            load({ jumpToNearest: true });
+            if (added && added.length > 0) mergeDeadlines(added);
             showToast(msg);
           }}
         />
@@ -415,10 +449,9 @@ export default function CalendarApp({
           onClose={closeEditModal}
           onSaved={(updated) => {
             if (creating) {
-              setDeadlines((ds) => [...ds, updated]);
+              mergeDeadlines([updated]);
               closeEditModal();
               showToast("Added");
-              load({ jumpToNearest: true });
             } else {
               setDeadlines((ds) =>
                 ds.map((d) => (d.id === updated.id ? updated : d)),
