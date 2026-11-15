@@ -41,7 +41,7 @@ function DeadlineChip({
         setTip(!!el && el.scrollWidth > el.clientWidth);
       }}
       onPointerLeave={() => setTip(false)}
-      className={`relative flex w-full cursor-pointer items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${tone}`}
+      className={`relative flex w-full items-center gap-1 rounded-[4px] px-1.5 py-1 text-left text-[11px] leading-tight ${tone}`}
     >
       <span
         className={`h-1.5 w-1.5 shrink-0 rounded-full ${overdue && !deadline.done ? "ring-1 ring-danger/70" : ""}`}
@@ -144,7 +144,7 @@ export default function MonthCalendar({
         />
       )}
 
-      <div className="grid cursor-default grid-cols-7 border-b border-hairline pb-1 text-[11px] text-muted">
+      <div className="grid grid-cols-7 border-b border-hairline pb-1 text-[11px] text-muted">
         {WEEKDAYS.map((w) => (
           <div key={w} className="px-2 py-1">
             {w}
@@ -165,7 +165,7 @@ export default function MonthCalendar({
           return (
             <div
               key={c.key}
-              className={`relative min-h-[104px] cursor-cell border-b border-r border-hairline p-1.5 ${
+              className={`relative min-h-[104px] border-b border-r border-hairline p-1.5 ${
                 popoverDay === c.key ? "z-30" : ""
               }`}
             >
@@ -173,7 +173,7 @@ export default function MonthCalendar({
                 type="button"
                 aria-label={dayLabel}
                 onClick={() => setPopoverDay(popoverDay === c.key ? null : c.key)}
-                className={`mb-1 flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-[11px] tabular-nums ${
+                className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
                   isToday
                     ? "font-medium text-accent"
                     : c.inMonth
@@ -207,7 +207,7 @@ export default function MonthCalendar({
               </div>
 
               {popoverDay === c.key && (
-                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] cursor-default rounded-[8px] border border-hairline bg-canvas p-3">
+                <div className="panel-enter absolute left-1 top-full z-30 mt-1 w-[272px] rounded-[8px] border border-hairline bg-canvas p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-xs font-medium">
                       {c.date.toLocaleDateString("en-GB", {
@@ -222,7 +222,7 @@ export default function MonthCalendar({
                         setPopoverDay(null);
                         setConfirmDeleteId(null);
                       }}
-                      className="cursor-pointer text-xs text-muted hover:text-ink"
+                      className="text-xs text-muted hover:text-ink"
                       aria-label="Close"
                     >
                       ✕
@@ -265,7 +265,7 @@ export default function MonthCalendar({
                               onPointerEnter={() => {
                                 void import("@/components/EditModal");
                               }}
-                              className="cursor-pointer text-[11px] text-muted underline-offset-2 hover:text-ink hover:underline"
+                              className="text-[11px] text-muted underline-offset-2 hover:text-ink hover:underline"
                             >
                               Edit
                             </button>
@@ -279,7 +279,7 @@ export default function MonthCalendar({
                                   setConfirmDeleteId(d.id);
                                 }
                               }}
-                              className="cursor-pointer text-[11px] text-muted underline-offset-2 hover:text-danger hover:underline"
+                              className="text-[11px] text-muted underline-offset-2 hover:text-danger hover:underline"
                             >
                               {confirmDeleteId === d.id ? "Confirm" : "Delete"}
                             </button>
