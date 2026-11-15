@@ -72,7 +72,7 @@ export default function ListView({
             id={`list-${section.key}`}
             tabIndex={section.key === "overdue" ? -1 : undefined}
             className={`mb-2 border-b border-hairline pb-1 text-[11px] font-medium outline-none ${
-              section.key === "overdue" ? "text-danger" : "text-muted"
+              section.key === "overdue" ? "scroll-mt-14 text-danger" : "text-muted"
             }`}
           >
             {section.label} · {section.items.length}

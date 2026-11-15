@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-// Spec: "Auth: bare white canvas, wordmark, Supabase auth fields / magic
-// link, one accent CTA." Mode D6: password AND magic link.
+// Spec: bare white canvas, wordmark, Supabase auth fields / sign-in link,
+// one accent CTA. Mode D6: password AND email sign-in link.
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");

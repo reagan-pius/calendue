@@ -337,7 +337,7 @@ export default function CalendarApp({
                 onEdit={openEdit}
                 onDelete={removeDeadline}
                 onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
-                onAdd={(dayKey) => openManual(dayKey)}
+                onAdd={openManual}
               />
             )}
           </>
@@ -383,7 +383,7 @@ export default function CalendarApp({
       {(editing || creating) && (
         <EditModal
           deadline={creating ? null : editing}
-          initialDate={creating ? (createDate ?? undefined) : undefined}
+          initialDate={createDate ?? undefined}
           onClose={closeEditModal}
           onSaved={(updated) => {
             if (creating) {

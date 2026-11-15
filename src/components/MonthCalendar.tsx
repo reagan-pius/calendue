@@ -79,8 +79,8 @@ interface MonthCalendarProps {
 }
 
 // Spec: hairline month grid, quiet day numbers, type-colored chips;
-// today cell lightly tinted; click day/chip for popover with that day's
-// deadlines + edit; empty popover can add for that date.
+// today cell lightly tinted; click anywhere in a day cell for popover;
+// empty popover can add for that date.
 export default function MonthCalendar({
   cursor,
   now,
@@ -182,10 +182,6 @@ export default function MonthCalendar({
               <button
                 type="button"
                 aria-label={dayLabel}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleDay();
-                }}
                 className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] tabular-nums ${
                   isToday
                     ? "font-medium text-accent"
