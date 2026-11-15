@@ -11,7 +11,7 @@ interface ListViewProps {
   now: number;
   onEdit: (d: Deadline) => void;
   onToggle: (d: Deadline) => void;
-  onAdd?: () => void;
+  onAdd: () => void;
 }
 
 type Section = { key: string; label: string; items: Deadline[] };
@@ -53,15 +53,13 @@ export default function ListView({
     return (
       <div className="flex flex-col items-center gap-4 py-32">
         <p className="text-sm text-muted">No deadlines yet. Paste from Moodle or a chat.</p>
-        {onAdd && (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
-          >
-            Add deadlines
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onAdd}
+          className="btn-press rounded-[6px] bg-accent px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
+        >
+          Add deadlines
+        </button>
       </div>
     );
   }

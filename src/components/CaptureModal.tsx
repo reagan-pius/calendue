@@ -11,7 +11,7 @@ import { combineLocal, splitIso } from "@/lib/dates";
 interface CaptureModalProps {
   onClose: () => void;
   onDone: (toast: string) => void;
-  onManual?: () => void;
+  onManual: () => void;
 }
 
 interface ReviewRow {
@@ -214,17 +214,13 @@ export default function CaptureModal({ onClose, onDone, onManual }: CaptureModal
               className={`${inputCls} min-h-[180px] resize-y font-mono text-[13px]`}
             />
             <div className="mt-4 flex items-center justify-between gap-2">
-              {onManual ? (
-                <button
-                  type="button"
-                  onClick={onManual}
-                  className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
-                >
-                  Or add one manually
-                </button>
-              ) : (
-                <span />
-              )}
+              <button
+                type="button"
+                onClick={onManual}
+                className="text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+              >
+                Or add one manually
+              </button>
               <div className="flex items-center gap-2">
                 <button
                   type="button"

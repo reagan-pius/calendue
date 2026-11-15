@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       : TYPE_COLORS[type];
   const source =
     typeof body.source === "string" &&
-    ["paste", "manual", "email", "github", "agent"].includes(body.source)
+    ["paste", "manual"].includes(body.source)
       ? body.source
       : "manual";
 

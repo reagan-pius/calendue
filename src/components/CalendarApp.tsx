@@ -313,16 +313,16 @@ export default function CalendarApp({
                   Add deadlines
                 </button>
               </div>
-            ) : cursor ? (
+            ) : (
               <MonthCalendar
-                cursor={cursor}
+                cursor={cursor!}
                 now={now}
                 deadlines={deadlines}
                 onEdit={openEdit}
                 onDelete={removeDeadline}
                 onToggle={(d) => patchDeadline(d.id, { done: !d.done })}
               />
-            ) : null}
+            )}
           </>
         ) : loadError && !loading ? (
           <div className="flex flex-col items-center gap-3 py-24">

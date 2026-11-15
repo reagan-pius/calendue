@@ -50,15 +50,12 @@ function detectType(text: string): TypeGuess {
 }
 
 /** Module presence implies coursework when no keyword matched. */
-function resolveType(
-  text: string,
-  hasModule: boolean,
-): { type: DeadlineType; certain: boolean } {
+function resolveType(text: string, hasModule: boolean): DeadlineType {
   const guess = detectType(text);
   if (!guess.certain && hasModule && guess.type === "reminder") {
-    return { type: "assignment", certain: false };
+    return "assignment";
   }
-  return guess;
+  return guess.type;
 }
 
 function extractModule(line: string): {
@@ -142,7 +139,7 @@ function parseLine(line: string, tz: string, ref: Date): ParsedItem {
   const resolved = resolveDate(line, tz, ref);
   const { moduleCode, line: withoutModule } = extractModule(line);
   const title = cleanTitle(withoutModule, resolved.dateTexts) || "Untitled deadline";
-  const { type } = resolveType(line, moduleCode !== null);
+  const type = resolveType(line, moduleCode !== null);
   return toItem({ raw: line, title, resolved, type, module: moduleCode });
 }
 
@@ -181,7 +178,7 @@ function parseEntry(lines: string[], tz: string, ref: Date): ParsedItem {
   }
 
   const title = cleanBlockTitle(titleSrc, resolved?.dateTexts ?? []);
-  const { type } = resolveType(raw, moduleCode !== null);
+  const type = resolveType(raw, moduleCode !== null);
   return toItem({ raw, title, resolved, type, module: moduleCode });
 }
 
